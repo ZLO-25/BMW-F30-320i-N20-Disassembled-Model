@@ -1,0 +1,159 @@
+[
+ {
+  "id": "wiki_n20",
+  "title": "Wikipedia: BMW N20",
+  "url": "https://en.wikipedia.org/wiki/BMW_N20",
+  "type": "wiki",
+  "accessed": "2026-10-25",
+  "note": "排氣量、缸徑行程、輸出、twin-scroll、Valvetronic、直噴、電子水泵、塑膠正時鏈導軌"
+ },
+ {
+  "id": "wiki_8hp",
+  "title": "Wikipedia: ZF 8HP transmission",
+  "url": "https://en.wikipedia.org/wiki/ZF_8HP_transmission",
+  "type": "wiki",
+  "accessed": "2026-10-25"
+ },
+ {
+  "id": "leebmann_ga8hp45",
+  "title": "Leebmann24: BMW automatic transmission EH GA8HP45 (24009487562)",
+  "url": "https://www.leebmann24.com/cz/en/product/bmw-automatic-transmission-eh-10130436",
+  "type": "parts_catalog",
+  "accessed": "2026-10-25",
+  "note": "列出 F30 320i N20 自排，生產期 2015/7–2018/10"
+ },
+ {
+  "id": "globalparts_gs6_17bg",
+  "title": "GlobalParts: BMW F30 320i N20 manual gearbox GS6-17BG (23007633989)",
+  "url": "https://globalparts.co.uk/manual-transmission/7633989/bmw-f22-f23-f30-f31-f32-f36-220i-320i-420i-n20-manual-gearbox-gs6-17bg-warranty",
+  "type": "parts_catalog",
+  "accessed": "2026-10-25"
+ },
+ {
+  "id": "bmwpartsdeal_gs6_17bg",
+  "title": "bmwpartsdeal: Manual Gearbox GS6-17BG, 2012 328i N20 (F30)",
+  "url": "https://www.bmwpartsdeal.com/parts-list/2012-bmw-328i-sedan_n20_engine_f30/manual_transmission/manual_gearbox_gs6_17bg.html",
+  "type": "parts_catalog",
+  "accessed": "2026-10-25",
+  "note": "含手排齒輪油 MTF LT-3 料號 83222339221"
+ },
+ {
+  "id": "autodoc_n20_chain",
+  "title": "Autodoc: BMW F30 N20 engine timing chain guide failures",
+  "url": "https://www.autodoc.co.uk/info/bmw-f30-n20-engine-timing-chain-guide-failures",
+  "type": "repair_site",
+  "accessed": "2026-10-25"
+ },
+ {
+  "id": "wiki_f30",
+  "title": "Wikipedia: BMW 3 Series (F30)",
+  "url": "https://en.wikipedia.org/wiki/BMW_3_Series_(F30)",
+  "type": "wiki",
+  "accessed": "2026-10-26",
+  "note": "前雙關節彈簧支柱、後五連桿、電動轉向、後驅配置（P4 底盤說明的依據；尺寸與扭力仍待查證）"
+ },
+ {
+  "id": "bmw_cbs_us_2020",
+  "title": "BMW Group SIB B000217 Attachment 2: CBS intervals Rev5 (07/2020)",
+  "url": "https://bmwtechinfo.bmwgroup.com/sib_attachments/B000217%20Attachment%202%20CBS%20intervals%20Rev5%207_20.pdf",
+  "type": "oem",
+  "accessed": "2026-10-26",
+  "note": "BMW 北美的 CBS 參考表：2/3（非柴油）/4/5/6/7 系列。單位是英里與月，先到先算；CBS 會依實際使用調整。不是台灣 F30 的原廠手冊，所以本專案標成 community。"
+ },
+ {
+  "id": "underhood_cbs",
+  "title": "Underhood Service: Troubleshooting BMW's Condition Based Service System",
+  "url": "https://www.underhoodservice.com/?p=69010",
+  "type": "repair_site",
+  "accessed": "2026-10-26",
+  "note": "CBS 監控哪些項目：機油、冷氣濾網、前後來令片（磨損感知器）、煞車油（每 24 個月）；冷卻液不監控、沒有原廠週期"
+ },
+ {
+  "id": "fcp_8hp",
+  "title": "FCP Euro: BMW lifetime transmission fluid isn't lifetime",
+  "url": "https://www.fcpeuro.com/blog/bmw-lifetime-transmission-fluid-isnt-lifetime",
+  "type": "diy",
+  "accessed": "2026-10-26",
+  "note": "BMW 標示 6HP/8HP 為終身油；ZF 自己的建議是 8 年或 80,000 km"
+ },
+ {
+  "id": "bimmerlife_8hp",
+  "title": "Bimmerlife: The not-so-lifetime ZF 8HP transmission fill",
+  "url": "https://bimmerlife.com/2023/12/24/the-not-so-lifetime-zf-8hp-transmission-fill/",
+  "type": "diy",
+  "accessed": "2026-10-26",
+  "note": "加油量要在油溫約 40–50 °C 時檢查"
+ },
+ {
+  "id": "fcp_n20_oil",
+  "title": "FCP Euro: How to perform a BMW F30 oil change (N20)",
+  "url": "https://www.fcpeuro.com/blog/how-to-perform-a-bmw-f30-oil-change-bmw-n20-engine",
+  "type": "diy",
+  "accessed": "2026-10-26",
+  "note": "機油約 4.5 L、濾芯蓋 25 Nm、iDrive 看油位"
+ },
+ {
+  "id": "ricks_battery_reg",
+  "title": "Rick's Free Auto Repair Advice: Why you have to register a new battery in your BMW",
+  "url": "https://ricksfreeautorepairadvice.com/register-new-bmw-battery/",
+  "type": "diy",
+  "accessed": "2026-10-26",
+  "note": "IBS 依電瓶老化調整充電策略；註冊會把充電表重設，沒註冊會用舊電瓶的高充電率"
+ },
+ {
+  "id": "bumper_severe",
+  "title": "Bumper.ca: Severe duty maintenance",
+  "url": "https://www.bumper.ca/car-advice/ownership/severe-duty-maintenance/",
+  "type": "repair_site",
+  "accessed": "2026-10-26",
+  "note": "嚴苛使用（短程、走走停停、高溫）的通則：機油原廠間隔的一半、冷卻液 3 年或 50,000 英里、髒污環境空濾 10,000–15,000 英里"
+ },
+ {
+  "id": "kumho_rotation",
+  "title": "Kumho Tire USA: Tire rotation",
+  "url": "https://kumhotireusa.com/tire-basics/tire-maintenance/tire-rotation",
+  "type": "manufacturer",
+  "accessed": "2026-10-26",
+  "note": "每 5,000–7,500 英里換位；前後不同尺寸只能左右換"
+ },
+ {
+  "id": "jalopnik_wipers",
+  "title": "Jalopnik: How often should you replace your wiper blades?",
+  "url": "https://jalopnik.com/2054774/how-often-replace-wiper-blades/",
+  "type": "media",
+  "accessed": "2026-10-26",
+  "note": "廠商通常建議至少每 12 個月；日曬高溫會更快老化，很多人建議 6 個月"
+ },
+ {
+  "id": "bimmerworld_diff",
+  "title": "BimmerWorld: Rear differential fluid service kit (Red Line 75W90)",
+  "url": "https://www.bimmerworld.com/Driveline-Shifter/Differentials-Accessories/Rear-Differential-Fluid-Service-Kit-Red-Line-75W90.html",
+  "type": "parts_catalog",
+  "accessed": "2026-10-26",
+  "note": "BMW 稱差速器油終身免換，BimmerWorld 建議街車每 50,000 英里換；頁面列的車型不含 F30（通則）"
+ },
+ {
+  "id": "europremium_n20",
+  "title": "Euro Premium Parts: BMW N20 engine guide — reliability & common problems",
+  "url": "https://europremiumparts.com/en-pl/blogs/bmw-buying-guides/bmw-n20-engine-guide-reliability-common-problems-tuning-potential",
+  "type": "parts_catalog",
+  "accessed": "2026-10-26",
+  "note": "正時鏈與張緊器（冷車咔咔、P0016/P0017）、電子水泵（水溫忽高忽低、暖氣不熱）、機濾座墊片、氣門室蓋；火星塞每 30,000–40,000 英里"
+ },
+ {
+  "id": "bmwtuning_n20",
+  "title": "BMW Tuning: BMW N20 engine problems",
+  "url": "https://bmwtuning.co/bmw-n20-common-problems/",
+  "type": "diy",
+  "accessed": "2026-10-26",
+  "note": "機濾座墊片、氣門室蓋漏油（燒機油味）；考爾原廠車約 60,000–75,000 英里預防性更換"
+ },
+ {
+  "id": "brembo_f30_320i",
+  "title": "Brembo parts catalogue: BMW 3 (F30, F80) 320 i",
+  "url": "https://www.bremboparts.com/europe/en/catalogue/bmw-3-f30-f80-320-i/000116010-1",
+  "type": "manufacturer",
+  "accessed": "2026-10-26",
+  "note": "副廠零件目錄：標準煞車前碟 300×22 mm、後碟 300×20 mm；M Sport 煞車前 340、後 345 mm。目錄頁面列的是 07/15–10/18 的 320i（135 kW）"
+ }
+]
