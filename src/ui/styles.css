@@ -28,7 +28,7 @@ a { color: var(--hover); }
 .viewport canvas { touch-action: none; }
 .touch-hint { position: absolute; left: 10px; bottom: 8px; font-size: 11px; color: var(--muted); background: rgba(20,22,26,.6); padding: 2px 8px; border-radius: 4px; pointer-events: none; }
 
-.side { width: 380px; background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+.side { width: var(--side-w, 380px); background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
 .side-tabs { display: flex; gap: 4px; padding: 6px; border-bottom: 1px solid var(--line); }
 .side-tabs button { flex: 1; }
 .side-toggle { display: none; flex: 0 0 36px; }
@@ -147,6 +147,13 @@ button.primary { background: var(--accent); color: #111; border-color: var(--acc
 .vis-ghost { background: #2c3e50; } .vis-hide { background: #3a1d1d; color: var(--muted); }
 button.link { border: none; background: transparent; color: var(--hover); font-size: 12px; padding: 2px 4px; }
 .drawer-handle { display: none; }
+/* 桌機：3D 畫面與側欄之間可拖曳的分隔線 */
+.side-resizer { flex: 0 0 6px; margin: 0 -3px; z-index: 5; cursor: ew-resize; touch-action: none; position: relative; background: transparent; }
+.side-resizer::after { content: ''; position: absolute; top: 0; bottom: 0; left: 2px; width: 2px; background: transparent; transition: background .15s; }
+.side-resizer:hover::after, .side-resizer:focus-visible::after, body.resizing .side-resizer::after { background: var(--accent, #ffa726); }
+.side-resizer:focus-visible { outline: none; }
+body.resizing { cursor: ew-resize; user-select: none; }
+body.resizing canvas { pointer-events: none; }
 
 /* 變速箱選擇 */
 .variant-modal { max-width: 720px; }
@@ -299,6 +306,7 @@ p.verdict { margin: 0; }
   .viewport { min-height: 0; }
   .side.closed { height: 52px; }
   .side-toggle { display: block; }
+  .side-resizer { display: none; }
   .drawer-handle { display: flex; justify-content: center; padding: 6px 0 2px; cursor: ns-resize; touch-action: none; }
   .drawer-handle span { width: 44px; height: 5px; border-radius: 3px; background: var(--line); }
   .topbar { gap: 6px; padding: 6px 8px; }

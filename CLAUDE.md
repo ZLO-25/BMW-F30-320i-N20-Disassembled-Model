@@ -110,3 +110,5 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 - 手機的像素比由 drei `PerformanceMonitor` 自動調（掉到 30 fps 以下降到 1）。
 - 部署：推到 main 就由 `.github/workflows/deploy.yml` 驗證、測試、打包、發佈到 GitHub Pages。
 - 查證回顧的修改寫在產生器 `p7.py`（每筆都有來源）；來源互相矛盾的數值（例：N20 放油螺絲 8 Nm vs 25 Nm）維持 null，並在警告文字裡寫明矛盾。
+- **子件的 `position` 是相對父件的**（3D 裡是巢狀 group）。在產生器裡用整車座標寫子件時，要先減掉父件位置（例：`p4.py` 的 `rs_local()`）。`src/core/positions.test.ts` 會擋下整車座標跑到車外的零件。
+- 桌機側欄寬度可拖曳（`SideResizer`，存在 localStorage `n20.sideWidth.v1`，雙擊恢復 380px）；手機版仍是下方抽屜拖高度。

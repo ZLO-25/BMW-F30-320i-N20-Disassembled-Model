@@ -97,6 +97,8 @@ export function App() {
           <div className="touch-hint">{ui(mode === 'teardown' ? 'touchHintTeardown' : 'touchHint', lang)}</div>
         </div>
 
+        <SideResizer label={ui('sideResize', lang)} />
+
         <aside className={`side ${drawerOpen ? 'open' : 'closed'}`}>
           <DrawerHandle />
           <div className="side-tabs">
@@ -130,6 +132,51 @@ export function App() {
 }
 
 /** 手機版抽屜頂端的拖曳把手：上下拖調整高度（桌機版隱藏） */
+/**
+ * 桌機：3D 畫面和右側欄中間的分隔線，拖曳改側欄寬度（手機版用下方的 DrawerHandle 改高度）。
+ * 寬度存在瀏覽器裡，下次打開還是同樣寬；雙擊回到預設 380px。
+ */
+const SIDE_KEY = 'n20.sideWidth.v1'
+const SIDE_DEFAULT = 380
+const clampSide = (w: number) => Math.round(Math.max(280, Math.min(w, window.innerWidth * 0.7, window.innerWidth - 320)))
+function applySide(w: number) { document.documentElement.style.setProperty('--side-w', `${w}px`) }
+
+function SideResizer({ label }: { label: string }) {
+  const drag = useRef<{ x0: number; w0: number } | null>(null)
+  useEffect(() => {
+    let saved = 0
+    try { saved = Number(localStorage.getItem(SIDE_KEY)) || 0 } catch { /* 讀不到就用預設 */ }
+    if (saved) applySide(clampSide(saved))
+  }, [])
+  const save = (w: number) => { try { localStorage.setItem(SIDE_KEY, String(w)) } catch { /* 存不了也沒關係 */ } }
+  const current = () => (document.querySelector('.side') as HTMLElement | null)?.getBoundingClientRect().width ?? SIDE_DEFAULT
+  const onDown = (e: React.PointerEvent) => {
+    drag.current = { x0: e.clientX, w0: current() }
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    document.body.classList.add('resizing')
+  }
+  const widthAt = (e: React.PointerEvent) => clampSide(drag.current!.w0 + (drag.current!.x0 - e.clientX))   // 往左拖 = 側欄變寬
+  const onMove = (e: React.PointerEvent) => { if (drag.current) applySide(widthAt(e)) }
+  const onUp = (e: React.PointerEvent) => {
+    if (!drag.current) return
+    const w = widthAt(e)
+    drag.current = null
+    document.body.classList.remove('resizing')
+    applySide(w); save(w)
+  }
+  const reset = () => { applySide(SIDE_DEFAULT); save(SIDE_DEFAULT) }
+  const onKey = (e: React.KeyboardEvent) => {
+    const step = e.shiftKey ? 60 : 20
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault()
+      const w = clampSide(current() + (e.key === 'ArrowLeft' ? step : -step))
+      applySide(w); save(w)
+    }
+  }
+  return <div className="side-resizer" role="separator" aria-orientation="vertical" aria-label={label} title={label} tabIndex={0}
+    onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onDoubleClick={reset} onKeyDown={onKey} />
+}
+
 function DrawerHandle() {
   const setH = useAppStore(s => s.setDrawerHeight)
   const h = useAppStore(s => s.drawerHeight)

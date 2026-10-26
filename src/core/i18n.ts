@@ -44,6 +44,7 @@ const UI = {
   level3: { zh: '零件', en: 'Component' },
   positionApprox: { zh: '3D 位置為示意，比例近似，尚未對照實車尺寸。', en: '3D position is schematic; not yet matched to real dimensions.' },
   about: { zh: '關於', en: 'About' },
+  sideResize: { zh: '拖曳調整側欄寬度（雙擊恢復預設）', en: 'Drag to resize the side panel (double-click to reset)' },
   aboutText: { zh: '所有零件目前皆為程式化建模，沒有使用外部 3D 模型。資料來源與可信度標示在每個數值旁。', en: 'All parts are procedurally modelled; no external 3D models are used yet. Sources and confidence are shown next to each value.' },
   sources: { zh: '來源', en: 'Sources' },
   close: { zh: '關閉', en: 'Close' },
