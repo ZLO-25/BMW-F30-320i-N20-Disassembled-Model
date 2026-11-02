@@ -15,6 +15,7 @@ export default defineConfig({
           if (!id.includes('node_modules')) return
           // 只把 three 本體分出來；React 和 R3F 互相依賴，硬拆會讓初始化順序出錯
           if (/node_modules\/three\//.test(id)) return 'three'
+          if (/node_modules\/(@react-three\/drei|three-stdlib|maath|camera-controls)\//.test(id)) return 'drei'
           return 'vendor'
         },
       },

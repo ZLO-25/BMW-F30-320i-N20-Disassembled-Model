@@ -20,7 +20,7 @@ function pickDetail(): Detail {
   const q = new URLSearchParams(location.search).get('quality')
   if (q === 'low' || q === 'mid' || q === 'high') return q
   const cores = navigator.hardwareConcurrency ?? 4
-  const mobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)
+  const mobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints ?? 0) > 1   // iPadOS 的 Safari 會偽裝成桌機
   if (mobile && cores <= 4) return 'low'
   if (mobile) return 'mid'
   return 'high'

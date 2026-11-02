@@ -34,6 +34,8 @@ const checkSource = (ctx: string, s: string | null) => {
   if (s && !s.startsWith('http') && !sourceIds.has(s)) fail(`${ctx}: source "${s}" 不在 sources.json`)
 }
 for (const p of parts) {
+  const keys = p.specs.map(s => s.key)
+  if (new Set(keys).size !== keys.length) fail(`${p.id}: specs 的 key 重複`)
   for (const s of p.specs) checkSource(`${p.id}.specs.${s.key}`, s.source)
   for (const f of p.removal.fasteners) checkSource(`${p.id}.fasteners "${f.desc}"`, f.source)
   for (const pn of p.partNumbers) checkSource(`${p.id}.partNumbers`, pn.source)
@@ -102,16 +104,20 @@ for (const [f, raw] of readDir('maintenance')) {
     for (const v of ['manual', 'auto'] as const) if (m.transmissionVariant === 'both' || m.transmissionVariant === v) mntPerVariant[v]++
     checkSource(`${m.id}.interval.oem`, m.interval.oem.source); checkSource(`${m.id}.interval.taiwanConservative`, m.interval.taiwanConservative.source)
     for (const c of m.consumables) checkSource(`${m.id}.consumables`, c.source)
+    const { oem, taiwanConservative: tw } = m.interval
+    if (oem.km != null && tw.km != null && tw.km > oem.km) fail(`${m.id}：台灣保守建議 ${tw.km} km 比原廠 ${oem.km} km 還寬鬆`)
+    if (oem.months != null && tw.months != null && tw.months > oem.months) fail(`${m.id}：台灣保守建議 ${tw.months} 個月比原廠 ${oem.months} 個月還寬鬆`)
     for (const t of m.tools) if (!toolIds.has(t)) fail(`${m.id}：工具 ${t} 不存在`)
     if (m.focusPart) { const p = partById.get(m.focusPart); if (!p) fail(`${m.id}：focusPart ${m.focusPart} 不存在`); else if (!variantOk(m.transmissionVariant, p.transmissionVariant) && m.transmissionVariant !== 'both') fail(`${m.id}：focusPart 變體不符`) }
     if (m.procedure) { if (!procById.has(m.procedure)) fail(`${m.id}：導覽 ${m.procedure} 不存在`); else if (m.transmissionVariant === 'both' && procById.get(m.procedure) !== 'both') fail(`${m.id}：兩種變體都看得到，但導覽只限一種`) }
   }
 }
+const scnIds = new Set<string>()
 for (const [f, raw] of readDir('scenarios')) {
   const res = ScenarioFile.safeParse(raw)
   if (!res.success) { for (const i of res.error.issues) fail(`scenarios/${f} ${i.path.join('.')}: ${i.message}`); continue }
   for (const s of res.data) {
-    nScn++
+    nScn++; scnIds.add(s.id)
     for (const v of ['manual', 'auto'] as const) if (s.transmissionVariant === 'both' || s.transmissionVariant === v) scnPerVariant[v]++
     for (const src of s.sources) checkSource(`${s.id}.sources`, src)
     for (const c of [...s.questions, s.cause]) if (c.answer < 0 || c.answer >= c.options.length) fail(`${s.id}：answer 超出 options 範圍`)
@@ -129,8 +135,7 @@ for (const v of ['manual', 'auto'] as const) {
   if (mntPerVariant[v] < 14) fail(`${v} 只看得到 ${mntPerVariant[v]} 項保養，P6 要求 14 項`)
   if (scnPerVariant[v] < 5) fail(`${v} 只有 ${scnPerVariant[v]} 個情境，P6 要求至少 5 個`)
 }
-for (const l of (levels.success ? levels.data : [])) for (const g of l.goals) if (g.kind === 'scenario' && g.ref && !res_has_scn(g.ref)) fail(`Lv${l.id}：情境 ${g.ref} 不存在`)
-function res_has_scn(id: string) { for (const [, raw] of readDir('scenarios')) { const r = ScenarioFile.safeParse(raw); if (r.success && r.data.some(s => s.id === id)) return true } return false }
+for (const l of (levels.success ? levels.data : [])) for (const g of l.goals) if (g.kind === 'scenario' && g.ref && !scnIds.has(g.ref)) fail(`Lv${l.id}：情境 ${g.ref} 不存在`)
 
 console.log(`檢查了 ${parts.length} 個零件、${toolIds.size} 個工具、${sourceIds.size} 個來源、${nProc} 個導覽、${nQuiz} 題測驗、${nMnt} 項保養（手排 ${mntPerVariant.manual} / 自排 ${mntPerVariant.auto}）、${nScn} 個情境（手排 ${scnPerVariant.manual} / 自排 ${scnPerVariant.auto}）`)
 if (errors) { console.error(`\n${errors} 個錯誤`); process.exit(1) }

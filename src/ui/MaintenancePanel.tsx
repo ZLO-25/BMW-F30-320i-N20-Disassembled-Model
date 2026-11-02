@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { DataBundle } from '../core/loadData'
-import { t, ui, partName } from '../core/i18n'
+import { t, ui, fmt, partName } from '../core/i18n'
 import { useAppStore } from '../store/useAppStore'
 import { worldPosition } from '../core/partGraph'
 import { ConfidenceBadge } from './ConfidenceBadge'
@@ -37,10 +37,10 @@ export function MaintenancePanel({ data }: { data: DataBundle }) {
 
 const shortText = (iv: Interval, lang: 'zh' | 'en') => {
   // 沒有數字：沒來源 = 看狀況；有來源 = 原廠就是沒有固定週期
-  if (iv.km == null && iv.months == null) return iv.confidence === 'unverified' ? (lang === 'zh' ? '看狀況' : 'by condition') : (lang === 'zh' ? '無固定週期' : 'no fixed interval')
+  if (iv.km == null && iv.months == null) return ui(iv.confidence === 'unverified' ? 'byCondition' : 'noFixedInterval', lang)
   const parts: string[] = []
   if (iv.km != null) parts.push(`${iv.km.toLocaleString()} km`)
-  if (iv.months != null) parts.push(lang === 'zh' ? `${iv.months} 個月` : `${iv.months} mo`)
+  if (iv.months != null) parts.push(fmt(ui('monthsShort', lang), { n: iv.months }))
   return parts.join(' / ')
 }
 
