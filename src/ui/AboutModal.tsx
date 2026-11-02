@@ -14,6 +14,12 @@ export function AboutModal({ data }: { data: DataBundle }) {
         <h2>{ui('about', lang)}</h2>
         <p className="disclaimer-inline">⚠ {ui('disclaimer', lang)}</p>
         <p>{ui('aboutText', lang)}</p>
+        {data.issues.length > 0 && (
+          <>
+            <h3>⚠ {ui('dataIssues', lang)}</h3>
+            <ul>{data.issues.map((i, k) => <li key={k}><code>{i.partId}</code> {i.message}</li>)}</ul>
+          </>
+        )}
         <h3>{ui('sources', lang)}</h3>
         <ul>
           {[...data.sources.values()].map(s => (

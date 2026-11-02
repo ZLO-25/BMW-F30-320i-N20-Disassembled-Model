@@ -210,6 +210,18 @@ const UI = {
   scnResetConfirm: { zh: '開始任務前要把托盤上的零件全部裝回，確定嗎？', en: 'The tray must be reinstalled before starting. Continue?' },
   scnSources: { zh: '資料來源', en: 'Sources' },
   scnVariant: { zh: '這個任務只在{v}', en: 'This scenario is {v} only' },
+  // ── 審查後補的字串（S2 / S7）──
+  errorTitle: { zh: '頁面載入失敗', en: 'Something went wrong' },
+  errorBody: { zh: '程式發生未預期的錯誤。請重新整理；如果一直發生，請換瀏覽器或回報錯誤訊息。', en: 'An unexpected error occurred. Reload the page; if it keeps happening, try another browser or report the message below.' },
+  reload: { zh: '重新整理', en: 'Reload' },
+  noWebgl: { zh: '這個瀏覽器沒有 WebGL，無法顯示 3D 畫面。零件樹、資訊、保養與學習分頁仍然可以用。', en: 'This browser has no WebGL, so the 3D view cannot be shown. The parts tree, info, maintenance and learning tabs still work.' },
+  dataIssues: { zh: '資料載入問題', en: 'Data issues' },
+  loading: { zh: '載入中…', en: 'Loading…' },
+  compareSixGears: { zh: '手排只有六檔，7、8 檔時手排顯示空檔。', en: 'The manual has six gears; in 7th and 8th it shows neutral.' },
+  ratioSourceAuto: { zh: '齒比與接合表來源：Wikipedia ZF 8HP（社群可信度）', en: 'Ratios and engagement table: Wikipedia ZF 8HP (community confidence)' },
+  byCondition: { zh: '看狀況', en: 'by condition' },
+  noFixedInterval: { zh: '無固定週期', en: 'no fixed interval' },
+  monthsShort: { zh: '{n} 個月', en: '{n} mo' },
 } satisfies Record<string, Bilingual>
 
 export type UiKey = keyof typeof UI

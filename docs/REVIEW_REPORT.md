@@ -7,6 +7,29 @@
 
 ---
 
+## 處理狀態（2026-11-02，ZL 指示「須調整的地方全數修正」）
+
+| 編號 | 狀態 | 做了什麼 |
+|---|---|---|
+| H1 正時鏈位置 | ✅ 已修 | 10 個零件的位置／文字改到前方（VANOS 用 `rotation.y=180` 翻面），`eng.timing.chain` 改成 requires 減震皮帶盤＋油底殼、不再要求飛輪；情境文字、`disassembly.test`、`p6.test`、`engineParts.ts` 的鏈輪與背板座標同步修改 |
+| H2 真空來源 | ✅ 已修 | 總泵、節氣門、洩壓閥三處文字改正，來源登記 `bimmerworld_vacuum` |
+| H3 輪圈扭力 | ✅ 已填（community） | 140 Nm，來源 Bimmer Guides（稱引自 BMW 維修手冊）。四個輪子的 fastener、三個導覽的裝輪步驟、保養頁警語都更新。**請用車主手冊確認後再升 verified** |
+| H4 機油容量 | ✅ 已修 | 數字拿掉，耗材改 unverified，說明寫明 FCP 4.5 L vs Jerry 5.3 qt 的矛盾；來源登記 `getjerry_n20_oil` |
+| H5 散文標籤 | ✅ 簡單版 | 新增 `npm run report:claims` → `docs/CLAIMS_REPORT.md`（目前 82 句） |
+| H6 小疑點 | ✅ 已修 | HPFP 文字、渦輪／中冷器的「P4 補相依」句子（渦輪改成真的 requires `exh.downpipe_cat`）、手排油週期散文、總泵「左側（LHD）」、凸輪軸感知器改前端。機油加注蓋左右側仍待你用照片確認 |
+| H7 真空泵零件 | ✅ 已加 | `eng.head.vacuum_pump`（料號 11667622380，community），產生器 `vacuum_pump_v1` |
+| S1 GPU 漏記憶體 | ✅ 已修 | `disposeObject()`（ModelResolver）在 PartNode / GlbObject / CompareView 卸載時呼叫。實測切換 4 次 geometry 373 → 373 |
+| S2 錯誤邊界 | ✅ 已修 | `ErrorBoundary.tsx` 包住整個 App；沒有 WebGL 顯示文字提示而不掛 Canvas；壞掉的零件檔記成 issue 顯示在「關於」頁 |
+| S3 延遲載入 | ✅ 部分 | CompareView / LearnPanel / MaintenancePanel 改 `React.lazy`；drei 另外分包。**題庫／情境 JSON 仍在首包**（改成非同步載入要動 loadData 的同步 API 與測試，另開一個階段做） |
+| S4 useFrame | ✅ 已修 | 到位就不再改 position |
+| S5 訂閱瘦身 | ✅ 已修 | PartNode 改用 `useShallow` 一次訂閱；hint 只取 token |
+| S6 CI 加固 | ✅ 已修 | `.nvmrc`、`engines`、Dependabot、`npm run e2e`（headless 冒煙：console error、draw calls、記憶體漏、拆一個零件）並接進 deploy.yml。CSP 沒做（Vite dev 會注入 inline script，GitHub Pages 又不能設 header） |
+| S7 小修 | ✅ 已修 | 寫死字串改 `t()`；validate 多三條檢查；`pickDetail` 加觸控點數；meta description；favicon |
+
+驗證：`npm run validate` ✓（164 零件、24 來源）、`npm test` 68/68 ✓、`npm run build` ✓、`npm run e2e` ✓。
+
+---
+
 ## 0. 我理解的目標與問題
 
 **你的目標**：做一個能拿去教別人的 F30 320i（N20）拆裝模擬器。它要能在手機上跑、資料不准瞎編、錯的扭力比沒有扭力更危險。

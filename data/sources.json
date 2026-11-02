@@ -155,5 +155,37 @@
   "type": "manufacturer",
   "accessed": "2026-10-26",
   "note": "副廠零件目錄：標準煞車前碟 300×22 mm、後碟 300×20 mm；M Sport 煞車前 340、後 345 mm。目錄頁面列的是 07/15–10/18 的 320i（135 kW）"
+ },
+ {
+  "id": "fcp_n20_chain",
+  "title": "FCP Euro: How to replace the BMW N20 timing chain, Part 1 (removal)",
+  "url": "https://www.fcpeuro.com/blog/how-to-replace-the-bmw-n20-timing-chain-part-1-removal",
+  "type": "diy",
+  "accessed": "2026-11-02",
+  "note": "正時鏈在引擎前方（皮帶盤後面）；流程拆減震皮帶盤、油底殼、氣門室蓋、VANOS 鏈輪、導軌，不拆變速箱（飛輪只用工具鎖住）。VANOS 電磁閥在氣門室蓋前端；高壓油泵在 VANOS 蓋旁；真空泵在缸頭後方貼防火牆。"
+ },
+ {
+  "id": "bimmerworld_vacuum",
+  "title": "BimmerWorld: Vacuum pump for N20/N26 engines (11667622380)",
+  "url": "https://www.bimmerworld.com/Brakes/Vacuum-Pump-For-N20-N26-Engines-F22-F23-F30-F31-F32-F33-F34-F36-F10.html",
+  "type": "parts_catalog",
+  "accessed": "2026-11-02",
+  "note": "凸輪軸驅動的機械真空泵，鎖在缸頭後方，供應煞車倍力器、渦輪洩壓閥致動器與排氣閥門的真空。"
+ },
+ {
+  "id": "getjerry_n20_oil",
+  "title": "Jerry: BMW N20 engine oil capacity",
+  "url": "https://getjerry.com/car-repair/bmw-n20-oil-capacity",
+  "type": "media",
+  "accessed": "2026-11-02",
+  "note": "寫 5.3 quart（約 5.0 L），與 FCP Euro 的 4.5 L 矛盾，所以本專案把機油容量維持待查證。"
+ },
+ {
+  "id": "bimmerguides_wheel_torque",
+  "title": "Bimmer Guides: BMW wheel tightening torque specifications",
+  "url": "https://bimmerguides.com/bmw-wheel-tightening-torque-specifications/",
+  "type": "repair_site",
+  "accessed": "2026-11-02",
+  "note": "F30/F31/F34 列 140 Nm，頁面稱引自 BMW 維修手冊但沒註明版本，所以標 community；請再用車主手冊確認。"
  }
 ]

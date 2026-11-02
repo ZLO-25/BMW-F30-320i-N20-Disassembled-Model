@@ -1,13 +1,13 @@
 # 資料查證報表（自動產生）
 
-產生時間：2026-10-26
+產生時間：2026-11-02
 
 | 可信度 | 數量 | 比例 |
 |---|---|---|
 | verified（原廠） | 0 | 0.0% |
-| community（社群/維修網站） | 51 | 17.6% |
-| unverified（待查證） | 238 | 82.4% |
-| 合計 | 289 | 100% |
+| community（社群/維修網站） | 55 | 18.9% |
+| unverified（待查證） | 236 | 81.1% |
+| 合計 | 291 | 100% |
 
 ## 待查證清單
 
@@ -48,13 +48,9 @@
 | body.cabin_filter | partNumber |
 | body.wipers | partNumber |
 | chs.trans_crossmember | partNumber |
-| chs.wheel_fl | torque:輪圈螺絲 / Wheel bolts |
 | chs.wheel_fl | partNumber |
-| chs.wheel_fr | torque:輪圈螺絲 / Wheel bolts |
 | chs.wheel_fr | partNumber |
-| chs.wheel_rl | torque:輪圈螺絲 / Wheel bolts |
 | chs.wheel_rl | partNumber |
-| chs.wheel_rr | torque:輪圈螺絲 / Wheel bolts |
 | chs.wheel_rr | partNumber |
 | chs.front_subframe | partNumber |
 | chs.engine_mount_l | partNumber |
@@ -138,6 +134,7 @@
 | eng.head.valvetronic_motor | partNumber |
 | eng.head.rocker_assembly | partNumber |
 | eng.head.valves | partNumber |
+| eng.head.vacuum_pump | torque:真空泵固定螺絲 / Pump mounting bolts |
 | eng.fuel.hpfp | partNumber |
 | eng.fuel.hp_line | partNumber |
 | eng.fuel.rail_injectors | partNumber |
@@ -230,6 +227,7 @@
 | trans.auto.gearsets | partNumber |
 | trans.auto.flexplate | torque:驅動盤螺絲 / Flexplate bolts |
 | trans.auto.flexplate | partNumber |
+| mnt.oil | consumable:Engine oil |
 | mnt.oil | consumable:Oil filter element (with O-rings) |
 | mnt.oil | consumable:Drain plug washer |
 | mnt.air_filter | consumable:Air filter element |
