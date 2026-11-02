@@ -118,3 +118,13 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 - AO 用 `@react-three/postprocessing` 的 N8AO（`Scene.tsx` 的 `PostFX`），只在 high/mid；low 不掛。`?ao=0` 強制關。
 - 掛後處理時色調映射由最後的 `<ToneMapping>` 做；背景 / 格線顏色與透視透明度（`PartNode.ghostTuning`）在 AO 開啟時有補償，改這些顏色要兩組一起改。
 - GLB 材質載入時用 `materialMatch.ts` 的 `presetForMaterial` 換成 `M.*`。
+
+## 審查後（2026-11-02，見 docs/REVIEW_REPORT.md）
+- **N20 正時鏈在引擎前方**（皮帶盤後面），不是變速箱側；VANOS 在凸輪軸前端、正時鎖從後端固定。資料與產生器都已照這個改，不要再改回去。
+- 煞車倍力器真空來自缸頭後方的機械真空泵（`eng.head.vacuum_pump`），不是節氣門、也不是電動泵。
+- 用 `<primitive>` 掛上去的物件 R3F 不會自動釋放：零件卸載時一律呼叫 `disposeObject()`（`ModelResolver.tsx`），不然切換變速箱會漏 GPU 記憶體。
+- `PartNode` 用 `useShallow` 一次訂閱 store；新增欄位時加進那個 selector，不要再另外 `useAppStore(s => ...)`。
+- 只有點到才需要的面板用 `React.lazy`（CompareView / LearnPanel / MaintenancePanel）；被首包元件共用的小幫手放 `learnHelpers.ts`，不要從面板檔 import。
+- `npm run e2e`：打包後的 headless 冒煙測試（console error、draw calls、切換變體記憶體、拆一個零件），CI 會跑；本機沒裝瀏覽器時 `npx playwright install chromium`。
+- `npm run report:claims`：列出散文裡標「待查證／示意」的句子（docs/CLAIMS_REPORT.md）。查到來源後改句子並登記 sources.json。
+- 來源互相矛盾的數值（放油螺絲 8 vs 25 Nm、機油 4.5 vs 5.0 L）維持 null，矛盾寫在說明文字裡。

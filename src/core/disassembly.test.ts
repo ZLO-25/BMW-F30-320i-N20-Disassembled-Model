@@ -3,7 +3,7 @@ import { Part, PartFile, ToolFile } from './schema'
 import { buildGraph, validateGraph } from './partGraph'
 import {
   emptyTeardown, checkRemove, checkInstall, applyRemove, applyInstall, removedSet,
-  undoEntry, redoEntry, greedyTeardown, greedyReinstall, type TeardownState,
+  undoEntry, redoEntry, greedyTeardown, greedyReinstall, removalPlan, type TeardownState,
 } from './disassembly'
 import toolsJson from '../../data/tools.json'
 
@@ -137,10 +137,15 @@ describe('真實資料：手排與自排各自都能從外殼一路拆到曲軸�
       expect(g.byId.has('eng.block.crankshaft')).toBe(true)
     })
 
-    it(`${v}：正時鏈要先拆變速箱與飛輪/驅動盤`, () => {
+    it(`${v}：正時鏈在引擎前方，要先拆減震皮帶盤與油底殼，不用拆變速箱或飛輪`, () => {
       const chain = g.byId.get('eng.timing.chain')!
-      expect(chain.removal.requires).toContain(v === 'manual' ? 'trans.manual.dmf' : 'trans.auto.flexplate')
-      expect(chain.removal.requires).not.toContain(v === 'manual' ? 'trans.auto.flexplate' : 'trans.manual.dmf')
+      expect(chain.removal.requires).toContain('eng.front.vibration_damper')
+      expect(chain.removal.requires).toContain('eng.lube.oil_pan')
+      expect(chain.removal.requires).not.toContain('trans.manual.dmf')
+      expect(chain.removal.requires).not.toContain('trans.auto.flexplate')
+      const plan = removalPlan(g, emptyTeardown(), ['eng.timing.chain'])
+      expect(plan.stuck).toEqual([])
+      expect(plan.order).not.toContain(v === 'manual' ? 'trans.manual.assembly' : 'trans.auto.assembly')
     })
 
     it(`${v}：每個零件都拆得下來（沒有死結），而且能拆到曲軸`, () => {
