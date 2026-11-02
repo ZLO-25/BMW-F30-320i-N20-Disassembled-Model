@@ -112,3 +112,9 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 - 查證回顧的修改寫在產生器 `p7.py`（每筆都有來源）；來源互相矛盾的數值（例：N20 放油螺絲 8 Nm vs 25 Nm）維持 null，並在警告文字裡寫明矛盾。
 - **子件的 `position` 是相對父件的**（3D 裡是巢狀 group）。在產生器裡用整車座標寫子件時，要先減掉父件位置（例：`p4.py` 的 `rs_local()`）。`src/core/positions.test.ts` 會擋下整車座標跑到車外的零件。
 - 桌機側欄寬度可拖曳（`SideResizer`，存在 localStorage `n20.sideWidth.v1`，雙擊恢復 380px）；手機版仍是下方抽屜拖高度。
+
+## U6 之後（材質與光影）
+- 表面紋理在 `src/scene/procedural/grain.ts`：程式產生、三面投影（不靠 UV），`M.*` 透過 `registry.ts` 的 `grained()` 接上。強度只改 `GRAIN_SETTINGS`。新材質要有質感就用 `grained(kind, ...)`，不要自己加 bumpMap。
+- AO 用 `@react-three/postprocessing` 的 N8AO（`Scene.tsx` 的 `PostFX`），只在 high/mid；low 不掛。`?ao=0` 強制關。
+- 掛後處理時色調映射由最後的 `<ToneMapping>` 做；背景 / 格線顏色與透視透明度（`PartNode.ghostTuning`）在 AO 開啟時有補償，改這些顏色要兩組一起改。
+- GLB 材質載入時用 `materialMatch.ts` 的 `presetForMaterial` 換成 `M.*`。

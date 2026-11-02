@@ -5,6 +5,7 @@
  */
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
+import { withGrain, GRAIN_SETTINGS, type GrainKind } from './grain'
 
 export type Detail = 'high' | 'mid' | 'low'
 export type Generator = (detail: Detail) => THREE.Group
@@ -70,18 +71,33 @@ function noiseTex(): THREE.DataTexture {
   return noise
 }
 
-/** 真實感材質預設（PBR）：金屬度、粗糙度照真實材料抓，配合環境光才有反射 */
+/**
+ * 有紋理的材質：粗糙度貼圖是「乘上去的」（平均約 1 - rough/2），
+ * 所以底值先除回去，讓整體亮度和 U6 之前差不多，只多了細節。
+ */
+const grained = (kind: GrainKind, color: number, opts: Partial<THREE.MeshStandardMaterialParameters>) => {
+  const r = opts.roughness ?? 0.55
+  const avg = 1 - GRAIN_SETTINGS[kind].rough / 2
+  return withGrain(mat(color, { ...opts, roughness: Math.min(1, r / avg) }), kind)
+}
+
+/**
+ * 真實感材質預設（PBR）：金屬度、粗糙度照真實材料抓，配合環境光才有反射。
+ * U6：主要的四種表面加上程式產生的紋理（grain.ts，三面投影，不需要 UV）。
+ *   鑄鋁 castAl / forged → 砂面顆粒      鑄鐵 castIron / hotIron → 粗顆粒 + 砂孔
+ *   黑/灰塑膠 → 咬花凸點                  鋼 steel / darkSteel / machinedAl → 車削細紋
+ */
 export const M = {
-  castAl: () => mat(0x8f9399, { metalness: 0.75, roughness: 0.62, bumpMap: noiseTex(), bumpScale: 0.12 }),
-  machinedAl: () => mat(0xb9bdc2, { metalness: 0.95, roughness: 0.26 }),
-  castIron: () => mat(0x55585d, { metalness: 0.7, roughness: 0.8, bumpMap: noiseTex(), bumpScale: 0.18 }),
-  hotIron: () => mat(0x6a5a4e, { metalness: 0.6, roughness: 0.85, bumpMap: noiseTex(), bumpScale: 0.18 }),
-  steel: () => mat(0xa9afb6, { metalness: 1, roughness: 0.32 }),
-  darkSteel: () => mat(0x3c4046, { metalness: 0.9, roughness: 0.45 }),
-  forged: () => mat(0x6f747b, { metalness: 0.95, roughness: 0.5, bumpMap: noiseTex(), bumpScale: 0.06 }),
-  blackPlastic: () => mat(0x1b1d21, { metalness: 0, roughness: 0.62, bumpMap: noiseTex(), bumpScale: 0.05 }),
+  castAl: () => grained('castAl', 0x8f9399, { metalness: 0.75, roughness: 0.62 }),
+  machinedAl: () => grained('machined', 0xb9bdc2, { metalness: 0.95, roughness: 0.26 }),
+  castIron: () => grained('castIron', 0x55585d, { metalness: 0.7, roughness: 0.8 }),
+  hotIron: () => grained('castIron', 0x6a5a4e, { metalness: 0.6, roughness: 0.85 }),
+  steel: () => grained('machined', 0xa9afb6, { metalness: 1, roughness: 0.32 }),
+  darkSteel: () => grained('machined', 0x3c4046, { metalness: 0.9, roughness: 0.45 }),
+  forged: () => grained('castAl', 0x6f747b, { metalness: 0.95, roughness: 0.5 }),
+  blackPlastic: () => grained('plastic', 0x1b1d21, { metalness: 0, roughness: 0.62 }),
   glossPlastic: () => mat(0x15171a, { metalness: 0.05, roughness: 0.3 }),
-  greyPlastic: () => mat(0x3d4148, { metalness: 0, roughness: 0.6, bumpMap: noiseTex(), bumpScale: 0.05 }),
+  greyPlastic: () => grained('plastic', 0x3d4148, { metalness: 0, roughness: 0.6 }),
   rubber: () => mat(0x121315, { metalness: 0, roughness: 0.92 }),
   ceramic: () => mat(0xefe9dc, { metalness: 0, roughness: 0.25 }),
   copper: () => mat(0xb87333, { metalness: 1, roughness: 0.35 }),
@@ -92,6 +108,8 @@ export const M = {
   paint: () => new THREE.MeshPhysicalMaterial({ color: COLORS.body, metalness: 0.6, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.08 }),
   orange: () => mat(0xd9731a, { metalness: 0, roughness: 0.5 }),
 }
+
+export type Preset = keyof typeof M
 
 /** 放置輔助：設定位置後回傳同一個 mesh，方便鏈式寫法 */
 export const at = <T extends THREE.Object3D>(o: T, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0): T => {

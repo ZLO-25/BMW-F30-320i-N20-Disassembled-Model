@@ -7,7 +7,8 @@
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { useGLTF } from '@react-three/drei'
-import { getProcedural, mergeStaticMeshes, type Detail } from './procedural'
+import { getProcedural, mergeStaticMeshes, M, type Detail } from './procedural'
+import { presetForMaterial } from './procedural/materialMatch'
 
 // ?merge=0 關掉合併網格（除錯、比較效能用）
 const MERGE = typeof location === 'undefined' || new URLSearchParams(location.search).get('merge') !== '0'
@@ -37,13 +38,20 @@ export function useProceduralObject(name: string, detail: Detail): THREE.Group {
 export function GlbObject({ url, node, onObject }: { url: string; node?: string; onObject: (o: THREE.Object3D) => void }) {
   const gltf = useGLTF(url)
   const obj = useMemo(() => {
-    const src = node ? gltf.scene.getObjectByName(node) : gltf.scene
+    // GLTFLoader 會把節點名稱裡的 . : / [ ] 拿掉（例如 eng.head.valve_cover → enghead...），兩種都找
+    const src = node ? (gltf.scene.getObjectByName(node) ?? gltf.scene.getObjectByName(THREE.PropertyBinding.sanitizeNodeName(node))) : gltf.scene
     const cloned = (src ?? gltf.scene).clone(true)
-    // 複製材質，才能單獨高亮
+    // U6：材質換成 App 的 M.* 預設（和程式化零件同一套質感）；對不上的才保留原材質。
+    // 不論哪一種都是新的材質實例，才能單獨高亮。
+    const swap = (x: THREE.Material): THREE.Material => {
+      const s = x as THREE.MeshStandardMaterial
+      const preset = s.color ? presetForMaterial({ name: x.name, color: s.color, metalness: s.metalness ?? 0, transparent: x.transparent }) : null
+      return preset ? M[preset]() : x.clone()
+    }
     cloned.traverse((o) => {
       if ((o as THREE.Mesh).isMesh) {
         const m = o as THREE.Mesh
-        m.material = Array.isArray(m.material) ? m.material.map(x => x.clone()) : m.material.clone()
+        m.material = Array.isArray(m.material) ? m.material.map(swap) : swap(m.material)
       }
     })
     return cloned
