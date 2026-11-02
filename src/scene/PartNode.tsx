@@ -32,6 +32,13 @@ function applyHighlight(root: THREE.Object3D, look: Look) {
   })
 }
 
+/**
+ * U6：開了 AO（後處理）之後，半透明是在「線性色彩」裡疊的，同樣 0.14 的透明度看起來會濃很多
+ * （車殼變成一層藍霧）。Scene 會在 AO 開啟時把這個倍率調低，讓透視模式看起來和以前差不多。
+ */
+export const ghostTuning = { scale: 1 }
+const ghostOpacityFor = (isBody: boolean) => (isBody ? 0.12 : 0.14) * ghostTuning.scale
+
 /** 透明化 / 隱藏：記住原本的透明設定，恢復時才回得去。ghostShell = 動畫時把外殼（userData.shell）變半透明看內部 */
 export function applyVisibility(root: THREE.Object3D, vis: SysVis, ghostOpacity = 0.14, ghostShell = false) {
   root.traverse((o) => {
@@ -97,7 +104,7 @@ export function PartNode({ part, graph, detail, shadows }: Props) {
   const visRef = useRef(vis); visRef.current = vis
 
   useEffect(() => { if (modelHolder.current) applyHighlight(modelHolder.current, look) }, [look.color, look.intensity]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (modelHolder.current) applyVisibility(modelHolder.current, vis, isBody ? 0.12 : 0.14, shellGhost) }, [vis, isBody, shellGhost])
+  useEffect(() => { if (modelHolder.current) applyVisibility(modelHolder.current, vis, ghostOpacityFor(isBody), shellGhost) }, [vis, isBody, shellGhost])
   useEffect(() => () => { registry.delete(part.id) }, [registry, part.id])
   useEffect(() => { if (modelHolder.current) applyShadows(modelHolder.current, shadows && !isBody) }, [shadows, isBody])
 
@@ -105,7 +112,7 @@ export function PartNode({ part, graph, detail, shadows }: Props) {
     modelHolder.current = o
     registry.set(part.id, o)
     applyHighlight(o, lookRef.current)
-    applyVisibility(o, visRef.current, isBody ? 0.12 : 0.14, useAppStore.getState().anim !== null)
+    applyVisibility(o, visRef.current, ghostOpacityFor(isBody), useAppStore.getState().anim !== null)
     applyShadows(o, shadows && !isBody)
   }
 

@@ -4,9 +4,11 @@ import { OrbitControls, Grid, PerformanceMonitor } from '@react-three/drei'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import * as THREE from 'three'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { EffectComposer, N8AO, ToneMapping } from '@react-three/postprocessing'
+import { ToneMappingMode } from 'postprocessing'
 import type { DataBundle } from '../core/loadData'
 import { useAppStore } from '../store/useAppStore'
-import { PartNode, PartRegistryCtx } from './PartNode'
+import { PartNode, PartRegistryCtx, ghostTuning } from './PartNode'
 import { AnimationDriver } from './AnimationDriver'
 import { PerfStats, statsEnabled } from './PerfStats'
 import type { Detail } from './procedural'
@@ -62,6 +64,30 @@ function StudioEnvironment({ intensity }: { intensity: number }) {
   return null
 }
 
+/**
+ * U6 環境遮蔽（AO）：角落、縫隙、零件互相靠近的地方自然變暗，立體感差很多。
+ *
+ *   一般繪製 ──► 深度圖 ──► N8AO 算「這一點周圍被擋住多少」──► 變暗 ──► ACES 色調 ──► 畫面
+ *
+ * 只在 high / mid 開；low（手機）整段不掛，回到 U6 之前的直接繪製。
+ * 掛了後處理之後，色調映射（ACES）改由最後一步 ToneMapping 做，renderer 自己的那份會被關掉。
+ * ?ao=0 可以強制關掉（比較前後、或電腦太慢時用）。
+ */
+export const aoEnabled = (detail: Detail) => detail !== 'low' && new URLSearchParams(location.search).get('ao') !== '0'
+
+const GHOST_SCALE_AO = 0.3
+
+function PostFX({ detail }: { detail: Detail }) {
+  const high = detail === 'high'
+  return (
+    <EffectComposer multisampling={high ? 4 : 0}>
+      {/* 半徑單位是公尺：0.15 m ≈ 零件之間的縫隙、螺栓座、凹槽這種尺度 */}
+      <N8AO aoRadius={0.15} distanceFalloff={0.6} intensity={high ? 3 : 2.5} quality={high ? 'medium' : 'low'} halfRes={!high} />
+      <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+    </EffectComposer>
+  )
+}
+
 /** 剖面：整個畫面共用一個切割平面。x = 橫切（看前後），z = 縱切（看左右） */
 function SectionPlane() {
   const { gl } = useThree()
@@ -81,6 +107,11 @@ export function Scene({ data }: { data: DataBundle }) {
   const registry = useMemo(() => new Map<string, THREE.Object3D>(), [])
   const select = useAppStore(s => s.select)
   const detail = useMemo(pickDetail, [])
+  const ao = aoEnabled(detail)
+  // AO 開啟時：最後一步的 ACES 也會套到背景與格線上（會變得幾乎全黑），所以先給亮一點的顏色，
+  // 算過 ACES 之後剛好回到原本的 #15171b / #262a31 / #363c46；半透明倍率也一起調（見 PartNode ghostTuning）
+  const bg = ao ? { bg: '#27292d', cell: '#36393f', section: '#42474f' } : { bg: '#15171b', cell: '#262a31', section: '#363c46' }
+  ghostTuning.scale = ao ? GHOST_SCALE_AO : 1
   const mobile = detail !== 'high'
   const shadows = !mobile
   // 自動降解析度：連續掉到 30 fps 以下就把像素比降到 1，順了再慢慢升回去（上限：手機 1.5、桌機 2）
@@ -96,7 +127,7 @@ export function Scene({ data }: { data: DataBundle }) {
       gl={{ antialias: !mobile, powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}>
       <PerformanceMonitor bounds={() => [30, 55]} flipflops={4}
         onDecline={() => setDpr(1)} onIncline={() => setDpr(maxDpr)} onFallback={() => setDpr(1)} />
-      <color attach="background" args={['#15171b']} />
+      <color attach="background" args={[bg.bg]} />
       <StudioEnvironment intensity={mobile ? 0.7 : 0.85} />
       <hemisphereLight intensity={0.35} groundColor="#1a1a1a" />
       <directionalLight position={[4, 6, 3]} intensity={2.2} castShadow={shadows}
@@ -109,7 +140,7 @@ export function Scene({ data }: { data: DataBundle }) {
           <shadowMaterial opacity={0.35} />
         </mesh>
       )}
-      <Grid args={[20, 20]} position={[0, 0.001, 0]} cellColor="#262a31" sectionColor="#363c46" fadeDistance={16} infiniteGrid />
+      <Grid args={[20, 20]} position={[0, 0.001, 0]} cellColor={bg.cell} sectionColor={bg.section} fadeDistance={16} infiniteGrid />
       <PartRegistryCtx.Provider value={registry}>
         {data.graph.roots.map(r => <PartNode key={r.id} part={r} graph={data.graph} detail={detail} shadows={shadows} />)}
         <AnimationDriver />
@@ -118,6 +149,7 @@ export function Scene({ data }: { data: DataBundle }) {
         minDistance={0.25} maxDistance={12} maxPolarAngle={Math.PI * 0.78} />
       <CameraReset controls={controls} />
       <SectionPlane />
+      {ao && <PostFX detail={detail} />}
       {statsEnabled() && <PerfStats />}
     </Canvas>
   )

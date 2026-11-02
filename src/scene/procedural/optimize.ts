@@ -28,7 +28,7 @@ function materialKey(m: THREE.Material): string {
     m.type, a.color?.getHexString(), a.emissive?.getHexString(), a.roughness, a.metalness,
     a.map?.uuid, a.bumpMap?.uuid, a.bumpScale, a.normalMap?.uuid, a.clearcoat, a.clearcoatRoughness,
     m.transparent, m.opacity, m.side, m.depthWrite, a.flatShading, a.vertexColors, a.envMapIntensity,
-    m.polygonOffset, a.wireframe,
+    m.polygonOffset, a.wireframe, m.userData.grain,
   ].join('|')
 }
 
