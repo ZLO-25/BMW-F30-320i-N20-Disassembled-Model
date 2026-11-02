@@ -1,7 +1,7 @@
 /**
  * N20 引擎零件的程式化模型（P2 版）。目標：形狀像、比例近似、位置關係正確；尺寸是示意，沒有對照原廠圖。
  * 座標：每個產生器的原點 = 資料裡該零件的 position。引擎座標原點在缸體中心。
- *       +X 車頭（皮帶側）、+Y 上、+Z 右（渦輪/排氣側）、-X 後方（正時鏈側）。曲軸沿 X，在 y=-0.09。
+ *       +X 車頭（皮帶側，正時鏈也在這一側、皮帶盤後面）、+Y 上、+Z 右（渦輪/排氣側）、-X 後方（飛輪／變速箱側）。曲軸沿 X，在 y=-0.09。
  * 零件位置寫在 data/parts/engine.json，改這裡的尺寸時兩邊要一起改。
  */
 import * as THREE from 'three'
@@ -49,10 +49,10 @@ registerProcedural('engine_block_v2', (d) => {
   for (const x of BEARING_X) g.add(mesh(rbox(d, 0.012, 0.12, 0.33, 0.003), M.castAl(), x, -0.04, 0))
   // 側面加強肋
   for (const x of [-0.24, -0.12, 0, 0.12, 0.24]) for (const z of [0.183, -0.183]) g.add(mesh(rbox(d, 0.012, 0.3, 0.012, 0.004), M.castAl(), x, -0.03, z))
-  // 後方正時鏈室的背板（鏈條在它外面 x=-0.33）
-  g.add(mesh(rbox(d, 0.012, 0.52, 0.32, 0.006), M.castAl(), -0.306, 0.07, 0))
-  // 前蓋
-  g.add(mesh(rbox(d, 0.012, 0.3, 0.3, 0.006), M.castAl(), 0.306, -0.03, 0))
+  // 前方正時鏈室的背板（鏈條在它外面 x=+0.318，皮帶盤後面；審查後從後方改到前方，見 docs/REVIEW_REPORT.md H1）
+  g.add(mesh(rbox(d, 0.012, 0.52, 0.32, 0.006), M.castAl(), 0.306, 0.07, 0))
+  // 後端面（飛輪側）
+  g.add(mesh(rbox(d, 0.012, 0.3, 0.3, 0.006), M.castAl(), -0.306, -0.03, 0))
   // 引擎腳支架
   for (const z of [0.2, -0.2]) g.add(mesh(rbox(d, 0.08, 0.05, 0.04, 0.008), M.castAl(), 0.05, -0.02, z))
   // 排水塞、感知器座之類的小凸台
@@ -280,8 +280,9 @@ registerProcedural('hpfp_v1', (d) => {
   return g
 })
 
+// 高壓油管：高壓油泵在缸頭後端「排氣側」（排氣凸輪軸驅動，ST1111），油管繞過缸頭後方接到進氣側的油軌
 registerProcedural('hp_line_v1', (d) =>
-  grp(mesh(tube(d, [[-0.22, 0.155, -0.17], [-0.25, 0.135, -0.195], [-0.262, 0.09, -0.205], [-0.24, 0.055, -0.195], [-0.205, 0.05, -0.19]], 0.004), M.steel())))
+  grp(mesh(tube(d, [[-0.24, 0.165, 0.075], [-0.27, 0.165, 0.0], [-0.285, 0.13, -0.12], [-0.262, 0.09, -0.205], [-0.24, 0.055, -0.195], [-0.205, 0.05, -0.19]], 0.004), M.steel())))
 
 registerProcedural('rail_injectors_v1', (d) => {
   const g = grp(mesh(cylX(d, 0.011, 0.42), M.steel()))
@@ -426,7 +427,7 @@ registerProcedural('intercooler_v1', (d) => {
   return g
 })
 
-// ───────────────────────── 正時（後置）─────────────────────────
+// ───────────────────────── 正時（前置：鏈條在皮帶盤後面，VANOS 在凸輪軸前端）─────────────────────────
 const CHAIN_CIRCLES = [
   { y: CRANK_Y, z: 0, r: 0.031 },
   { y: HEAD_Y + CAM_Y, z: -CAM_Z, r: 0.053 },
@@ -465,6 +466,13 @@ registerProcedural('chain_guides_v1', (d) => {
   return g
 })
 
+// 機械真空泵（缸頭後端、進氣側凸輪軸驅動；資料 z=-0.055）：圓筒本體 + 法蘭 + 真空管接頭
+registerProcedural('vacuum_pump_v1', (d) => grp(
+  mesh(cylX(d, 0.032, 0.05), M.castAl(), -0.025, 0, 0),
+  mesh(cylX(d, 0.04, 0.008), M.machinedAl(), 0.002, 0, 0),
+  mesh(cylZ(d, 0.007, 0.03), M.blackPlastic(), -0.03, 0.02, 0.035),
+))
+
 registerProcedural('chain_tensioner_v1', (d) => grp(
   mesh(cylZ(d, 0.011, 0.04), M.steel(), 0, 0, -0.01),
   mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.012, 6).rotateX(Math.PI / 2), M.steel(), 0, 0, 0.014),
@@ -490,8 +498,8 @@ registerProcedural('crankshaft_v1', (d) => {
   })
   g.add(mesh(cylX(d, 0.02, 0.13), M.steel(), 0.265, 0, 0))                 // 前端軸頸（到減震盤）
   g.add(mesh(cylX(d, 0.045, 0.012), M.steel(), -0.205, 0, 0))              // 後端飛輪法蘭
-  g.add(mesh(sprocket(d, 0.031, 20, 0.012), M.darkSteel(), -0.33, 0, 0))   // 正時鏈輪（在後方）
-  g.add(mesh(cylX(d, 0.018, 0.12), M.steel(), -0.27, 0, 0))
+  g.add(mesh(sprocket(d, 0.031, 20, 0.012), M.darkSteel(), 0.318, 0, 0))   // 正時鏈輪（在前方，減震皮帶盤後面）
+  g.add(mesh(cylX(d, 0.018, 0.05), M.steel(), -0.235, 0, 0))              // 後端短軸頸（到飛輪法蘭）
   return g
 })
 

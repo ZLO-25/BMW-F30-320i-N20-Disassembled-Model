@@ -189,9 +189,10 @@ registerProcedural('steering_column_v1', (d) => grp('',
 // ───────────────────────── 傳動 ─────────────────────────
 registerProcedural('driveshaft_v1', (d) => {
   const g = grp('spin')
-  g.add(mesh(cylX(d, 0.038, 0.68), M.steel(), 0.36, 0, 0), mesh(cylX(d, 0.034, 0.68), M.steel(), -0.36, 0, 0))
+  // 兩截各 0.53 m：變速箱輸出法蘭（x≈0.09）到差速器法蘭（x≈-1.01），軸距 2.81 m 時全長約 1.1 m
+  g.add(mesh(cylX(d, 0.038, 0.53), M.steel(), 0.285, 0, 0), mesh(cylX(d, 0.034, 0.53), M.steel(), -0.285, 0, 0))
   g.add(mesh(cylX(d, 0.045, 0.06), M.darkSteel(), 0, 0, 0))                          // 中間滑套
-  g.add(mesh(cylX(d, 0.06, 0.03), M.darkSteel(), 0.71, 0, 0), mesh(cylX(d, 0.06, 0.03), M.darkSteel(), -0.71, 0, 0))  // 法蘭
+  g.add(mesh(cylX(d, 0.06, 0.03), M.darkSteel(), 0.56, 0, 0), mesh(cylX(d, 0.06, 0.03), M.darkSteel(), -0.56, 0, 0))  // 法蘭
   return grp('', g)
 })
 registerProcedural('center_bearing_v1', (d) => grp('',

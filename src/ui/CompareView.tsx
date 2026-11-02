@@ -9,7 +9,7 @@ import type { Part } from '../core/schema'
 import { buildGraph, type PartGraph, type Variant } from '../core/partGraph'
 import { ui } from '../core/i18n'
 import { useAppStore } from '../store/useAppStore'
-import { parseModelRef, useProceduralObject } from '../scene/ModelResolver'
+import { parseModelRef, useProceduralObject, disposeObject } from '../scene/ModelResolver'
 import { applyVisibility } from '../scene/PartNode'
 import { ANIM_BY_ID, GEARS, MANUAL_RATIOS, AUTO_RATIOS, AUTO_ELEMENTS, resetAnim } from '../scene/animations'
 
@@ -23,7 +23,7 @@ function StaticPart({ part, graph, registry, keep }: { part: Part; graph: PartGr
   useEffect(() => {
     registry.set(part.id, obj)
     applyVisibility(obj, 'show', 0.14, true)
-    return () => { registry.delete(part.id) }
+    return () => { registry.delete(part.id); disposeObject(obj) }
   }, [obj, part.id, registry])
   const kids = (graph.children.get(part.id) ?? []).filter(keep)
   return (
@@ -113,7 +113,7 @@ export function CompareView({ data }: { data: DataBundle }) {
       <div className="compare-legend">
         <p><strong>{ui('variantManual', lang)}</strong> <span className="chip plain">{gearText('manual', gear)}</span> {ui('compareManualPath', lang)}</p>
         <p><strong>{ui('variantAuto', lang)}</strong> <span className="chip plain">{gearText('auto', gear)}</span> {ui('compareAutoPath', lang)}</p>
-        <p className="muted small">{ui('compareHint', lang)}　{gear === '7' || gear === '8' ? (lang === 'zh' ? '手排只有六檔，7、8 檔時手排顯示空檔。' : 'The manual has six gears; in 7th and 8th it shows neutral.') : ''}</p>
+        <p className="muted small">{ui('compareHint', lang)}　{gear === '7' || gear === '8' ? ui('compareSixGears', lang) : ''}</p>
       </div>
     </div>
   )

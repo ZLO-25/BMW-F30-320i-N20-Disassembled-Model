@@ -22,6 +22,20 @@ export function parseModelRef(ref: string): { kind: 'procedural'; name: string }
   return { kind: 'glb', url: resolved, node }
 }
 
+/**
+ * 釋放一個零件物件的 GPU 資源（審查 S1）。R3F 不會自動 dispose 用 <primitive> 掛上去的物件，
+ * 切換變速箱重建場景時舊零件會留在顯示卡記憶體裡（實測切 6 次 geometry 370 → 856）。
+ * 共用的雜訊貼圖（registry 的 noiseTex）不在這裡 dispose：material.dispose() 不會動到 texture。
+ */
+export function disposeObject(root: THREE.Object3D) {
+  root.traverse((o) => {
+    const m = o as THREE.Mesh
+    if (!m.isMesh) return
+    m.geometry?.dispose()
+    for (const mm of Array.isArray(m.material) ? m.material : [m.material]) mm?.dispose()
+  })
+}
+
 export function useProceduralObject(name: string, detail: Detail): THREE.Group {
   return useMemo(() => {
     let gen = getProcedural(name)
@@ -56,6 +70,6 @@ export function GlbObject({ url, node, onObject }: { url: string; node?: string;
     })
     return cloned
   }, [gltf, node])
-  useEffect(() => { onObject(obj) }, [obj]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { onObject(obj); return () => disposeObject(obj) }, [obj]) // eslint-disable-line react-hooks/exhaustive-deps
   return <primitive object={obj} />
 }

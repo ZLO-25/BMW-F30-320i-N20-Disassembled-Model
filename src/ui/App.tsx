@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef } from 'react'
 import { loadData } from '../core/loadData'
 import { ui } from '../core/i18n'
 import { useAppStore } from '../store/useAppStore'
@@ -11,12 +11,21 @@ import { HintToast } from './HintToast'
 import { ViewTools } from './ViewTools'
 import { VariantModal } from './VariantModal'
 import { AnimPanel } from './AnimPanel'
-import { CompareView } from './CompareView'
-import { LearnPanel } from './LearnPanel'
 import { MistakeModal } from './MistakeModal'
-import { MaintenancePanel } from './MaintenancePanel'
+import { ErrorBoundary, webglSupported } from './ErrorBoundary'
+
+// 審查 S3：點到才載入的面板（對照模式有第二個 Canvas；學習與保養帶著題庫與情境資料）
+const CompareView = lazy(() => import('./CompareView').then(m => ({ default: m.CompareView })))
+const LearnPanel = lazy(() => import('./LearnPanel').then(m => ({ default: m.LearnPanel })))
+const MaintenancePanel = lazy(() => import('./MaintenancePanel').then(m => ({ default: m.MaintenancePanel })))
+const WEBGL = webglSupported()
 
 export function App() {
+  const lang0 = useAppStore(s => s.lang)
+  return <ErrorBoundary lang={lang0}><AppBody /></ErrorBoundary>
+}
+
+function AppBody() {
   const variant = useAppStore(s => s.variant)
   const data = useMemo(() => loadData(variant ?? 'auto'), [variant])
   const lang = useAppStore(s => s.lang)
@@ -91,7 +100,7 @@ export function App() {
 
       <main className="main">
         <div className="viewport">
-          <Scene data={data} />
+          {WEBGL ? <Scene data={data} /> : <div className="nowebgl"><p>{ui('noWebgl', lang)}</p></div>}
           <HintToast data={data} />
           <ViewTools data={data} />
           <div className="touch-hint">{ui(mode === 'teardown' ? 'touchHintTeardown' : 'touchHint', lang)}</div>
@@ -117,15 +126,15 @@ export function App() {
             <div className={`pane ${drawerTab === 'info' ? 'show' : ''}`}><InfoCard data={data} /></div>
             <div className={`pane ${drawerTab === 'tray' ? 'show' : ''}`}><Tray data={data} /></div>
             <div className={`pane ${drawerTab === 'anim' ? 'show' : ''}`}><AnimPanel data={data} /></div>
-            <div className={`pane ${drawerTab === 'learn' ? 'show' : ''}`}><LearnPanel data={data} /></div>
-            <div className={`pane ${drawerTab === 'maint' ? 'show' : ''}`}><MaintenancePanel data={data} /></div>
+            <div className={`pane ${drawerTab === 'learn' ? 'show' : ''}`}><Suspense fallback={<p className="muted">{ui('loading', lang)}</p>}>{drawerTab === 'learn' && <LearnPanel data={data} />}</Suspense></div>
+            <div className={`pane ${drawerTab === 'maint' ? 'show' : ''}`}><Suspense fallback={<p className="muted">{ui('loading', lang)}</p>}>{drawerTab === 'maint' && <MaintenancePanel data={data} />}</Suspense></div>
           </div>
         </aside>
       </main>
 
       <AboutModal data={data} />
       <VariantModal />
-      <CompareView data={data} />
+      <Suspense fallback={null}><CompareView data={data} /></Suspense>
       <MistakeModal data={data} />
     </div>
   )
