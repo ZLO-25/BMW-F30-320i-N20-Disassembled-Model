@@ -1,7 +1,8 @@
 /**
  * 簡化的 F30 四門轎車車殼：用側面輪廓擠出 + 四個輪子。只求比例與位置關係，不求寫實。
  * 之後會換成下載的 GLB（改 data/parts/car.json 的 modelRef 即可）。
- * 車身座標：原點在前後軸中點地面上方 0，+X 車頭。長約 4.6m、寬約 1.8m、高約 1.43m（示意）。
+ * 車身座標：原點在車身中央地面上，+X 車頭。長約 4.6m、寬約 1.8m、高約 1.43m（示意）。
+ * 前軸在 x=+1.5、後軸在 x=-1.31：軸距 2.81 m 照 F30 規格（auto-data），所以前懸短、後懸長，和實車一樣。
  */
 import * as THREE from 'three'
 import { registerProcedural, segs, mat, M, at, rbox } from './registry'
@@ -21,8 +22,8 @@ registerProcedural('body_shell_v1', (d) => {
   s.lineTo(-2.2, 1.05)   // 行李廂蓋
   s.lineTo(-2.3, 0.75)   // 後保桿上緣
   s.lineTo(-2.3, 0.3)
-  s.lineTo(-1.95, 0.3)
-  s.absarc(-1.5, 0.33, 0.45, Math.PI, 0, true)  // 後輪拱
+  s.lineTo(-1.76, 0.3)
+  s.absarc(-1.31, 0.33, 0.45, Math.PI, 0, true)  // 後輪拱（後軸 x=-1.31）
   s.lineTo(1.05, 0.3)
   s.absarc(1.5, 0.33, 0.45, Math.PI, 0, true)   // 前輪拱
   s.lineTo(2.3, 0.3)

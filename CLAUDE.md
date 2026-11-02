@@ -128,3 +128,14 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 - `npm run e2e`：打包後的 headless 冒煙測試（console error、draw calls、切換變體記憶體、拆一個零件），CI 會跑；本機沒裝瀏覽器時 `npx playwright install chromium`。
 - `npm run report:claims`：列出散文裡標「待查證／示意」的句子（docs/CLAIMS_REPORT.md）。查到來源後改句子並登記 sources.json。
 - 來源互相矛盾的數值（放油螺絲 8 vs 25 Nm、機油 4.5 vs 5.0 L）維持 null，矛盾寫在說明文字裡。
+
+## 查核後（2026-11-02，見 docs/AUDIT_REPORT.md）
+- **冷氣濾網在車內副駕腳部空間**（手套箱下，T20），不在引擎室；E90 才在進氣飾蓋下。
+- 缸頭後端：**高壓油泵在排氣側（右）**（排氣凸輪軸驅動，ST1111）、**真空泵在進氣側（左）**（推論，文字有寫明）。高壓油管產生器 `hp_line_v1` 是照這個走的。
+- 機油泵在平衡軸殼體飛輪側、由平衡軸齒輪帶動；平衡軸才是曲軸鏈條帶的（ST1111 p.72）。
+- **前軸 x=+1.5、後軸 x=−1.31（軸距 2.81 m）**，輪距前 1.543 / 後 1.583 m；車殼後輪拱、傳動軸長度（`driveshaft_v1` 約 1.1 m）都照這個。動後軸相關零件時十個都要一起動。
+- 透視時 `PartNode.applyGhostSpecular` 會把材質改成霧面（關 clearcoat／金屬度／環境反射），切回實體還原；新增會透視的材質不用自己處理。
+- **不要把 drei / three-stdlib 另外分 chunk**：和 `@react-three/postprocessing` 循環載入會讓整頁白掉（forwardRef undefined）。`npm run e2e` 會抓到。
+- `?stats=1` 另外提供 `window.__n20cam(px,py,pz,tx,ty,tz)` 給自動截圖擺鏡頭。
+- 還沒查證、等 ZL 用實車確認：機油加注蓋左右側、320i 尾管數。
+

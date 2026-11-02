@@ -40,6 +40,29 @@ function applyHighlight(root: THREE.Object3D, look: Look) {
 export const ghostTuning = { scale: 1 }
 const ghostOpacityFor = (isBody: boolean) => (isBody ? 0.12 : 0.14) * ghostTuning.scale
 
+type SpecBase = { metalness: number; roughness: number; envMapIntensity: number; clearcoat?: number }
+
+/**
+ * 透視時把「反光」關掉。
+ * 車漆是 metalness 0.6 + clearcoat 1：攝影棚環境貼圖映在上面的高光在線性空間是很大的數值（可能 > 5），
+ * 乘上 0.1 的透明度還是比 0.5 亮，所以半透明的車殼會出現一大片白光（U6 之後更明顯，因為最後才做色調映射）。
+ * 透視的目的是「看得到裡面、又知道殼在哪」，所以透視時改成不反光的霧面：金屬度 0、粗糙度 1、環境反射壓低、clearcoat 0。
+ * 原本的值記在 userData.baseSpec，切回實體時還原。
+ */
+function applyGhostSpecular(sm: THREE.MeshStandardMaterial, ghost: boolean) {
+  if (typeof sm.metalness !== 'number') return   // 不是 PBR 材質（例如 shadowMaterial）就不動
+  const ud = sm.userData as { baseSpec?: SpecBase }
+  const phys = sm as THREE.MeshPhysicalMaterial
+  if (ud.baseSpec === undefined) {
+    ud.baseSpec = { metalness: sm.metalness, roughness: sm.roughness, envMapIntensity: sm.envMapIntensity, clearcoat: typeof phys.clearcoat === 'number' ? phys.clearcoat : undefined }
+  }
+  const b = ud.baseSpec
+  sm.metalness = ghost ? 0 : b.metalness
+  sm.roughness = ghost ? 1 : b.roughness
+  sm.envMapIntensity = ghost ? 0.15 : b.envMapIntensity
+  if (b.clearcoat !== undefined) phys.clearcoat = ghost ? 0 : b.clearcoat
+}
+
 /** 透明化 / 隱藏：記住原本的透明設定，恢復時才回得去。ghostShell = 動畫時把外殼（userData.shell）變半透明看內部 */
 export function applyVisibility(root: THREE.Object3D, vis: SysVis, ghostOpacity = 0.14, ghostShell = false) {
   root.traverse((o) => {
@@ -53,6 +76,7 @@ export function applyVisibility(root: THREE.Object3D, vis: SysVis, ghostOpacity 
       mm.transparent = ghost || !!ud.baseTransparent
       mm.opacity = ghost ? ghostOpacity : ud.baseOpacity
       mm.depthWrite = !ghost
+      applyGhostSpecular(mm as THREE.MeshStandardMaterial, ghost)
       mm.needsUpdate = true
     }
   })

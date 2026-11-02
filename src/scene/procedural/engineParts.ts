@@ -280,8 +280,9 @@ registerProcedural('hpfp_v1', (d) => {
   return g
 })
 
+// 高壓油管：高壓油泵在缸頭後端「排氣側」（排氣凸輪軸驅動，ST1111），油管繞過缸頭後方接到進氣側的油軌
 registerProcedural('hp_line_v1', (d) =>
-  grp(mesh(tube(d, [[-0.22, 0.155, -0.17], [-0.25, 0.135, -0.195], [-0.262, 0.09, -0.205], [-0.24, 0.055, -0.195], [-0.205, 0.05, -0.19]], 0.004), M.steel())))
+  grp(mesh(tube(d, [[-0.24, 0.165, 0.075], [-0.27, 0.165, 0.0], [-0.285, 0.13, -0.12], [-0.262, 0.09, -0.205], [-0.24, 0.055, -0.195], [-0.205, 0.05, -0.19]], 0.004), M.steel())))
 
 registerProcedural('rail_injectors_v1', (d) => {
   const g = grp(mesh(cylX(d, 0.011, 0.42), M.steel()))
@@ -465,7 +466,7 @@ registerProcedural('chain_guides_v1', (d) => {
   return g
 })
 
-// 機械真空泵（缸頭後方、凸輪軸驅動）：圓筒本體 + 法蘭 + 真空管接頭
+// 機械真空泵（缸頭後端、進氣側凸輪軸驅動；資料 z=-0.055）：圓筒本體 + 法蘭 + 真空管接頭
 registerProcedural('vacuum_pump_v1', (d) => grp(
   mesh(cylX(d, 0.032, 0.05), M.castAl(), -0.025, 0, 0),
   mesh(cylX(d, 0.04, 0.008), M.machinedAl(), 0.002, 0, 0),
