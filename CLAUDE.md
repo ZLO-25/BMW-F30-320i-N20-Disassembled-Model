@@ -169,3 +169,5 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 - 有照片且面板開著時，3D 鏡頭的視角 = 照片的視角（`cameraVfov(vfovFromFocal35(...), scale)`），只暫時隱藏照片時視角不變；關掉面板回到 42°。
 - `CAR`（photoOverlay.ts）是車身外形常數，要和 `bodyShell.ts` 的 `BODY_X` 一致，`bodyShell.test.ts` 會檢查。
 - 手機照片 EXIF 的焦距不一定可信：ZL 側面照記 24 mm，反推實際約 45 mm（裁切 / 變焦），而且畫面中心往下偏（`dy ≈ −23%`）。
+- **前後懸用官方值**（`bmw_press_f30_us_2017`）：前 790、後 1,044 mm，車長 4,643 mm。`bodyShell.ts` 的 `stretchX()` 把照片描的 X 換成官方比例；hw / hs（俯視輪廓）直接用最終座標寫，兩端是圓弧（車頭圓鼻、車尾兩角收 16 cm）。
+- 車頭車尾的燈、進氣口一律用 `endX(end, z)` / `endYaw(end, z)` 貼著弧面放，改 hw 之後不用逐一調位置。

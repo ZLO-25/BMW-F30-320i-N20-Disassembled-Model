@@ -21,11 +21,12 @@ const HALF_DIAG_35 = Math.hypot(36, 24) / 2
 
 /** 車身外形（與 bodyShell 的 BODY_X、規格一致；bodyShell.test.ts 會互相檢查） */
 export const CAR = {
-  length: 4.626,
+  /** 前軸 1.5 + 前懸 0.79 到 後軸 −1.31 − 後懸 1.044（官方前後懸，bmw_press_f30_us_2017） */
+  length: 4.644,
   width: 1.811,
   height: 1.429,
-  /** 車身前後中點的 X（BODY_X.front = 2.2、BODY_X.rear = −2.426） */
-  centerX: (2.2 + -2.426) / 2,
+  /** 車身前後中點的 X（BODY_X.front = 2.29、BODY_X.rear = −2.354） */
+  centerX: (2.29 + -2.354) / 2,
 } as const
 
 export type OverlayView = 'left' | 'right' | 'front' | 'rear'
