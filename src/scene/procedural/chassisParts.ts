@@ -4,7 +4,7 @@
  * 桿件類（控制臂、連桿）一律沿 +X 畫，長度固定，實際方向用資料的 rotation 轉。
  */
 import * as THREE from 'three'
-import { registerProcedural, segs, mat, M, mesh, rbox, cylX, cylY, cylZ, tube, type Detail } from './registry'
+import { registerProcedural, segs, mat, M, mesh, rbox, cylX, cylY, cylZ, tube, at, type Detail } from './registry'
 
 const grp = (name = '', ...objs: THREE.Object3D[]) => { const g = new THREE.Group(); g.name = name; if (objs.length) g.add(...objs); return g }
 const shell = <T extends THREE.Object3D>(o: T): T => { o.userData.shell = true; return o }
@@ -41,6 +41,122 @@ registerProcedural('wheel_v1', (d) => {
   g.add(mesh(cylZ(d, 0.05, 0.03), M.darkSteel(), 0, 0, 0.11))
   for (let i = 0; i < 5; i++) g.add(mesh(cylZ(d, 0.008, 0.012), M.darkSteel(), Math.cos(i * Math.PI * 2 / 5 + 0.3) * 0.055, Math.sin(i * Math.PI * 2 / 5 + 0.3) * 0.055, 0.115))
   return grp('', g)
+})
+
+/**
+ * 外觀重做：wheel_v2。輪胎用「斷面旋轉」（lathe）做，所以有胎壁鼓起、胎肩圓角、胎面溝槽；
+ * 輪圈是 18 吋五組雙輻（ZL 實車是原廠 18 吋黑色雙輻），輻條之間是空的，看得到後面的碟盤和卡鉗。
+ *
+ *   輪胎斷面（右半，Z = 寬度方向，R = 半徑）          正面（+Z 朝車外）
+ *        胎面 ┌──╥──╥──╥──┐  R 0.330               ╭─────────╮
+ *        胎肩 ╭╯         ╰╮                          │ ╲╲  ╱╱  │  ← 5 組雙輻
+ *        胎壁 │  鼓起      │  最寬 ≈ 0.23 m           │──  ◉  ──│  ← 中心蓋 + 5 顆螺絲
+ *        胎唇 ╰╮         ╭╯  R 0.229（18 吋）        │ ╱╱  ╲╲  │
+ *             └─ 輪圈 ──┘                            ╰─────────╯
+ *
+ * 尺寸：225/45 R18（米其林泰國 F30 320i 適用胎表，michelin_f30_320i_sizes）→ 外徑 2×(0.45×225)+18×25.4 = 659.7 mm。
+ * 輪圈寬度、ET、ZL 實車前後是否不同寬（255/40 R18）都還沒查到：寬度用 8 吋示意（標在 shape）。
+ * 輪心高 0.345 是照片量的，比自由半徑 0.330 高 1.5 cm：輪子在零件內下移 1.5 cm 貼地，不動其他底盤零件。
+ */
+const TYRE = { r: 0.33, bead: 0.2286, w: 0.225, rimW: 0.203, axleY: 0.345 } as const
+function lathe(d: Detail, pts: [number, number][], n: number) {
+  const g = new THREE.LatheGeometry(pts.map(([r, z]) => new THREE.Vector2(r, z)), n)
+  g.rotateX(Math.PI / 2)        // lathe 的軸是 Y，轉成 Z（輪軸）
+  void d
+  return g
+}
+/** 輪胎斷面（r, z），z 由內側（−）到外側（+） */
+function tyreProfile(grooves: boolean): [number, number][] {
+  const { r, bead, w } = TYRE, hw = w / 2, rimHalf = TYRE.rimW / 2 + 0.012
+  const side = (s: 1 | -1): [number, number][] => [
+    [bead, s * rimHalf], [bead + 0.012, s * (rimHalf + 0.004)], [0.255, s * (hw + 0.004)], [0.28, s * (hw + 0.006)],
+    [0.30, s * (hw + 0.002)], [0.314, s * (hw - 0.008)], [0.323, s * (hw - 0.022)], [r, s * (hw - 0.038)],
+  ]
+  const tread: [number, number][] = []
+  const zs = [-(hw - 0.038), -0.07, -0.062, -0.026, -0.018, 0.018, 0.026, 0.062, 0.07, hw - 0.038]
+  if (grooves) {
+    // 四條縱向溝：溝底比胎面低 7 mm
+    tread.push([r, zs[0]], [r, zs[1]], [r - 0.007, zs[1] + 0.001], [r - 0.007, zs[2] - 0.001], [r, zs[2]], [r, zs[3]], [r - 0.007, zs[3] + 0.001], [r - 0.007, zs[4] - 0.001], [r, zs[4]],
+      [r, zs[5]], [r - 0.007, zs[5] + 0.001], [r - 0.007, zs[6] - 0.001], [r, zs[6]], [r, zs[7]], [r - 0.007, zs[7] + 0.001], [r - 0.007, zs[8] - 0.001], [r, zs[8]], [r, zs[9]])
+  } else tread.push([r, zs[0]], [r, zs[9]])
+  // lathe 的點要沿斷面走一圈：內側胎唇 → 胎面 → 外側胎唇（再回到內側時不用封，輪圈會擋住）
+  return [...side(-1), ...tread.slice(1, -1), ...side(1).reverse()]
+}
+/** 胎面橫向花紋 + 胎底壓平：直接改 lathe 的頂點（只有 high / mid） */
+function treadBlocks(g: THREE.BufferGeometry, n: number, every: number) {
+  const pos = g.getAttribute('position') as THREE.BufferAttribute
+  const v = new THREE.Vector3()
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i)
+    const rr = Math.hypot(v.x, v.y)
+    let a = Math.atan2(v.y, v.x); if (a < 0) a += Math.PI * 2
+    const seg = Math.round(a / (Math.PI * 2) * n)
+    let nr = rr
+    // 胎肩那兩排花紋塊之間的橫溝（中間兩排不切，像常見的運動胎）
+    if (every > 0 && rr > TYRE.r - 0.0005 && Math.abs(v.z) > 0.066 && seg % every === 0) nr -= 0.006
+    if (nr !== rr) { v.x *= nr / rr; v.y *= nr / rr }
+    pos.setXYZ(i, v.x, v.y, v.z)
+  }
+  pos.needsUpdate = true
+  g.computeVertexNormals()
+  return g
+}
+/** 一根輻條：從輪轂（半徑 r0、角度 a0、深 z0）到輪圈（r1、a1、z1）的梯形長條，寬 w0→w1、厚 t */
+function spokeGeo(r0: number, a0: number, z0: number, r1: number, a1: number, z1: number, w0: number, w1: number, t: number) {
+  const P0 = new THREE.Vector2(Math.cos(a0) * r0, Math.sin(a0) * r0), P1 = new THREE.Vector2(Math.cos(a1) * r1, Math.sin(a1) * r1)
+  const dir = P1.clone().sub(P0).normalize(), nrm = new THREE.Vector2(-dir.y, dir.x)
+  const c = (P: THREE.Vector2, w: number, s: number, z: number) => [P.x + nrm.x * w / 2 * s, P.y + nrm.y * w / 2 * s, z]
+  const p = [
+    c(P0, w0, -1, z0), c(P1, w1, -1, z1), c(P1, w1, 1, z1), c(P0, w0, 1, z0),
+    c(P0, w0, -1, z0 - t), c(P1, w1, -1, z1 - t), c(P1, w1, 1, z1 - t), c(P0, w0, 1, z0 - t),
+  ]
+  const quads = [[0, 1, 2, 3], [7, 6, 5, 4], [4, 5, 1, 0], [3, 2, 6, 7]]
+  const arr: number[] = []
+  for (const [a, b, cc, e] of quads) for (const k of [a, b, cc, a, cc, e]) arr.push(...p[k])
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3))
+  g.computeVertexNormals()
+  return g
+}
+registerProcedural('wheel_v2', (d) => {
+  const g = grp('spin')
+  const n = segs(d, 120, 48, 28)
+  // 輪胎
+  const tyre = lathe(d, tyreProfile(d !== 'low'), n)
+  if (d !== 'low') treadBlocks(tyre, n, d === 'high' ? 2 : 4)
+  const rubber = mat(0x17181a, { metalness: 0, roughness: 0.88 })
+  g.add(mesh(tyre, rubber))
+
+  // 輪圈：桶身（lathe）+ 外緣唇 + 5 組雙輻 + 輪轂盤 + 中心蓋 + 螺絲
+  const rimMat = mat(0x24272b, { metalness: 0.7, roughness: 0.3 })   // 亮黑（ZL 實車）
+  const lipMat = mat(0x2a2d31, { metalness: 0.85, roughness: 0.22 })
+  const hz = TYRE.rimW / 2
+  const barrel: [number, number][] = [
+    [0.236, -hz - 0.006], [0.236, -hz + 0.004], [0.222, -hz + 0.012], [0.205, -hz + 0.03], [0.205, hz - 0.03],
+    [0.222, hz - 0.012], [0.229, hz], [0.239, hz + 0.006], [0.241, hz + 0.012],
+  ]
+  g.add(mesh(lathe(d, barrel, n), rimMat))
+  const lip = lathe(d, [[0.241, hz + 0.012], [0.236, hz + 0.016], [0.222, hz + 0.013], [0.212, hz + 0.004]], n)
+  g.add(mesh(lip, lipMat))
+  // 雙輻：每組兩根在輪轂處靠近、到輪圈分開成 V；輪轂比外緣深（凹面）
+  const zHub = hz - 0.045, zRim = hz + 0.004, t = d === 'low' ? 0.02 : 0.03
+  for (let i = 0; i < 5; i++) {
+    const ac = Math.PI / 2 + (i / 5) * Math.PI * 2
+    for (const s of [-1, 1]) g.add(mesh(spokeGeo(0.066, ac + s * 0.2, zHub, 0.214, ac + s * 0.15, zRim, 0.034, 0.032, t), rimMat))
+  }
+  // 輪轂盤、螺絲、中心蓋
+  g.add(mesh(cylZ(d, 0.078, 0.03), rimMat, 0, 0, zHub - 0.01))
+  for (let i = 0; i < 5; i++) {
+    const a = i / 5 * Math.PI * 2 + Math.PI / 5 + Math.PI / 2
+    g.add(mesh(cylZ(d, 0.0085, 0.012), M.darkSteel(), Math.cos(a) * 0.06, Math.sin(a) * 0.06, zHub + 0.009))
+  }
+  g.add(mesh(cylZ(d, 0.03, 0.01), mat(0x0f1012, { metalness: 0.3, roughness: 0.4 }), 0, 0, zHub + 0.008))
+  if (d !== 'low') g.add(mesh(cylZ(d, 0.02, 0.003), mat(0xd6d9dd, { metalness: 1, roughness: 0.2 }), 0, 0, zHub + 0.014))
+  // 輪圈內側（桶身內面）暗一點，從輻條縫看進去才有深度
+  const inner = lathe(d, [[0.2, hz - 0.03], [0.2, -hz + 0.03]], n)
+  g.add(mesh(inner, mat(0x0c0d0e, { metalness: 0.4, roughness: 0.6, side: THREE.BackSide })))
+  // 輪心高（照片量的 0.345）比 225/45 R18 自由半徑 0.330 高 1.5 cm：整個輪子在零件裡下移 1.5 cm 貼地
+  return grp('', at(g, 0, TYRE.r - TYRE.axleY, 0))
 })
 
 // ───────────────────────── 前懸吊 ─────────────────────────

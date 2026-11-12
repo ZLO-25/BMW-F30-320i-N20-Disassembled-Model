@@ -145,10 +145,28 @@ export const endYaw = (end: 'front' | 'rear', z: number) => Math.atan2(Math.abs(
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
 const lerp = THREE.MathUtils.lerp
 
+/**
+ * 外觀重做：車頭、車尾「斜面」。輪廓表的俯視外形和高度無關，所以以前車頭是一面垂直的牆。
+ * F30 的車頭是保桿最前、上面（頭燈、水箱罩、引擎蓋前緣）往後倒；車尾是保桿下緣往前收。
+ * 這裡在算完頂點後再把兩端照高度往後 / 往前推（只動兩端，軸距與車長不變）：
+ *
+ *    側面車頭（右邊是車頭）          y
+ *            引擎蓋 ──╮  ← 往後 10 cm   0.80
+ *                     ╲ 頭燈
+ *                      │ 保桿最前       0.50
+ *                     ╱ 下緣             0.20
+ */
+export const RAKE = { front: 0.1, rear: 0.06 } as const
+export function rakeX(x: number, y: number): number {
+  const wf = clamp01((x - 1.95) / (BODY_X.front - 1.95))
+  const wr = clamp01((-2.0 - x) / (-2.0 - BODY_X.rear))
+  return x - RAKE.front * wf * wf * clamp01((y - 0.5) / 0.3) + RAKE.rear * wr * wr * clamp01((0.45 - y) / 0.25)
+}
+
 /** 某個 X 的半邊截面，12 個點（z ≥ 0），編號見檔頭的圖 */
 export function section(X: number): [number, number][] {
   const yT = F.top(X), yB = Math.min(F.belt(X), yT - 0.015), yF = F.bot(X)
-  const hw = F.hw(X), hs = Math.min(F.hs(X), hw - 0.01), hS = hw - 0.03
+  const hw = F.hw(X), hs = Math.min(F.hs(X), hw - 0.01), hS = hw - 0.055   // 裙邊往內收 5.5 cm（以前 3 cm，側面太像一面牆）
   const yW = yF + 0.53 * (yB - yF)
   // 傳動軸隧道：座艙底下中間拱起
   const tun = 0.16 * clamp01((X + 1.75) / 0.15) * clamp01((0.6 - X) / 0.15)
@@ -242,7 +260,7 @@ export function buildSkin(d: Detail, region: Region): Map<Exclude<Skin, null>, T
     if (v === undefined) {
       const [z, y] = secs[i][k]
       v = b.pos.length / 3
-      b.pos.push(xs[i], y, z * side)
+      b.pos.push(rakeX(xs[i], y), y, z * side)
       b.map.set(key, v)
     }
     return v
@@ -280,7 +298,7 @@ export function buildSkin(d: Detail, region: Region): Map<Exclude<Skin, null>, T
     const tris = THREE.ShapeUtils.triangulateShape(contour, [])
     const b = bucket('paint')
     const base = b.pos.length / 3
-    for (const [z, y] of ring) b.pos.push(xs[i], y, z)
+    for (const [z, y] of ring) b.pos.push(rakeX(xs[i], y), y, z)
     for (const [p, q, r] of tris) {
       // 依外側法線方向決定繞向
       const ab = new THREE.Vector3(0, ring[q][1] - ring[p][1], ring[q][0] - ring[p][0])
@@ -353,8 +371,66 @@ function sideLine(d: Detail, g: THREE.Group, pts: [number, number][], r: number,
   }
 }
 
-/** 尾燈：L 形，外側那段在車身（葉子板）上，內側那段在行李廂蓋上 */
-const TAIL = { y: 0.9 }
+
+// ───────────────────────── 貼著車皮的燈具（外觀重做） ─────────────────────────
+/**
+ * 頭燈、尾燈以前是一塊方塊斜放在車頭，和車皮的弧面對不上，看起來像貼紙。
+ * 現在先算出「車皮在 (z, y) 那一點的 X」，再把燈罩做成一張貼著車皮、往外浮幾毫米的曲面：
+ *
+ *   俯視（車頭右半）               每個 (z, y) 都往車頭方向二分搜尋，
+ *        ╭── 車皮                   找到截面輪廓的邊界 → 燈罩頂點就放在那裡 + out
+ *      ╭─╯ ▓▓ ← 燈罩貼著弧面
+ *     │ ▓▓
+ */
+function insideSection(X: number, z: number, y: number): boolean {
+  const half = fineSection(X, 3).pts
+  const poly = [...half, ...half.slice(1, -1).reverse().map(([a, b]) => [-a, b] as [number, number])]
+  let inside = false
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [zi, yi] = poly[i], [zj, yj] = poly[j]
+    if ((yi > y) !== (yj > y) && z < ((zj - zi) * (y - yi)) / (yj - yi) + zi) inside = !inside
+  }
+  return inside
+}
+/** 車頭（或車尾）在半寬 z、高度 y 那一點的車皮 X */
+export function surfX(end: 'front' | 'rear', z: number, y: number): number {
+  let a = end === 'front' ? 1.75 : -1.75, b = end === 'front' ? BODY_X.front + 0.01 : BODY_X.rear - 0.01
+  if (!insideSection(a, z, y)) return a
+  for (let i = 0; i < 26; i++) { const m = (a + b) / 2; if (insideSection(m, z, y)) a = m; else b = m }
+  return (a + b) / 2
+}
+/** 沿 z 從 z0 到 z1 的一條燈帶：每個 t（0→1）的下緣 yb(t)、上緣 yt(t)，貼著車皮往外 out 公尺 */
+function lampSkin(end: 'front' | 'rear', side: 1 | -1, z0: number, z1: number, yb: (t: number) => number, yt: (t: number) => number, out: number, nz: number, ny = 3, origin: [number, number, number] = [0, 0, 0]) {
+  const pos: number[] = [], idx: number[] = []
+  const dir = end === 'front' ? 1 : -1
+  for (let i = 0; i <= nz; i++) {
+    const t = i / nz, z = lerp(z0, z1, t)
+    for (let j = 0; j <= ny; j++) {
+      const y = lerp(yb(t), yt(t), j / ny)
+      pos.push(rakeX(surfX(end, z, y), y) + out * dir - origin[0], y - origin[1], z * side - origin[2])
+    }
+  }
+  for (let i = 0; i < nz; i++) for (let j = 0; j < ny; j++) {
+    const a = i * (ny + 1) + j, b = a + ny + 1
+    if (side * dir > 0) idx.push(a, a + 1, b, b, a + 1, b + 1); else idx.push(a, b, a + 1, b, b + 1, a + 1)
+  }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setIndex(idx)
+  g.computeVertexNormals()
+  return g
+}
+/**
+ * F30 頭燈外形（照車頭斜上方照 842052b3）：內端最高、貼著水箱罩；往外變窄、往上翹，外端碰到引擎蓋縫。
+ * 尾燈（車尾照 19501054）：L 形，外側那段比較高、包到側面。
+ */
+const HEAD = { z0: 0.255, z1: 0.8, yb: (t: number) => 0.655 + 0.085 * t * t, yt: (t: number) => 0.775 + 0.02 * t }
+const TAILL = {
+  lid: { z0: 0.36, z1: 0.555, yb: () => 0.895, yt: () => 0.955 },
+  body: { z0: 0.565, z1: 0.86, yb: (t: number) => 0.895 - 0.05 * Math.min(1, t * 3), yt: (t: number) => 0.965 - 0.02 * t },
+}
+const SIDE_CREASE_Y = (x: number) => 0.835 + 0.05 * clamp01((-x - 0.2) / 2.0)
+
 
 // 這幾個 origin 要和 data/parts/car.json 的 position 一致
 export const ORIGIN = {
@@ -395,22 +471,23 @@ registerProcedural('body_shell_v2', (d) => {
     if (d !== 'low') g.add(mesh(rbox(d, 0.11, 0.006, 0.006, 0.002), chrome(), x, 0.842, z + 0.01 * side))
   }
 
-  // 頭燈：車頭兩角，往後斜，裡面兩圈「天使眼」
-  for (const side of [1, -1]) {
-    const hl = new THREE.Group()
-    // 頭燈是透明燈罩 + 深色反射殼（正前照看起來是深灰帶鍍鉻），不是白色方塊
-    hl.add(mesh(rbox(d, 0.12, 0.08, 0.44, 0.025), lensMat(0x9aa6b2, 0.35)))
-    hl.add(mesh(rbox(d, 0.08, 0.065, 0.41, 0.01), mat(0x3a3e44, { metalness: 0.7, roughness: 0.25 }), 0.0, 0, 0))
-    if (d !== 'low') for (const z of [-0.1, 0.06]) {
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.036, 0.004, 6, 24), lensMat(0xffffff, 0.9, 0xcfe6ff))
-      ring.rotation.y = Math.PI / 2
-      ring.position.set(0.05, 0, z)
-      hl.add(ring)
+  // 頭燈：貼著車頭弧面的燈罩（深色反射殼 + 透明燈罩 + 兩圈天使眼 + LED 眉燈）
+  const nz = d === 'high' ? 16 : d === 'mid' ? 10 : 6
+  for (const side of [1, -1] as const) {
+    g.add(new THREE.Mesh(lampSkin('front', side, HEAD.z0, HEAD.z1, HEAD.yb, HEAD.yt, 0.004, nz), mat(0x30343a, { metalness: 0.85, roughness: 0.22 })))
+    g.add(new THREE.Mesh(lampSkin('front', side, HEAD.z0 - 0.005, HEAD.z1 + 0.005, t => HEAD.yb(t) - 0.006, t => HEAD.yt(t) + 0.006, 0.016, nz), lensMat(0xdfe8f0, 0.22)))
+    if (d !== 'low') {
+      // 眉燈：上緣一條白色 LED
+      g.add(new THREE.Mesh(lampSkin('front', side, HEAD.z0 + 0.03, HEAD.z1 - 0.03, t => HEAD.yt(t) - 0.016, t => HEAD.yt(t) - 0.008, 0.008, nz, 1), lensMat(0xffffff, 0.95, 0xe8f2ff)))
+      for (const t of [0.18, 0.5]) {
+        const z = lerp(HEAD.z0, HEAD.z1, t), y = (HEAD.yb(t) + HEAD.yt(t)) / 2 - 0.005
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.04 - t * 0.02, 0.004, 6, 28), lensMat(0xffffff, 0.9, 0xcfe6ff))
+        ring.rotation.y = Math.PI / 2 - endYaw('front', z) * side
+        ring.position.set(rakeX(surfX('front', z, y), y) + 0.008, y, z * side)
+        ring.rotation.z = -0.3
+        g.add(ring)
+      }
     }
-    // 照正前照 97ee5669：頭燈內端貼著水箱罩外緣；位置跟著車頭弧面往後退、轉角
-    hl.position.set(endX('front', 0.47) - 0.04, 0.725, 0.47 * side)
-    hl.rotation.y = -endYaw('front', 0.47) * side
-    g.add(hl)
   }
   // 雙腎型水箱罩：鍍鉻外框 + 黑色直柵
   for (const side of [1, -1]) {
@@ -419,8 +496,8 @@ registerProcedural('body_shell_v2', (d) => {
     kg.add(mesh(rbox(d, 0.03, 0.14, 0.22, 0.035), chrome()))
     kg.add(mesh(rbox(d, 0.032, 0.12, 0.2, 0.03), M.glossPlastic(), 0.002, 0, 0))
     if (d === 'high') for (let i = 0; i < 10; i++) kg.add(mesh(rbox(d, 0.012, 0.1, 0.006, 0.002), chrome(), 0.012, 0, -0.09 + i * 0.02))
-    kg.position.set(endX('front', 0.125) - 0.012, 0.67, 0.125 * side)
-    kg.rotation.z = -0.25
+    kg.position.set(rakeX(endX('front', 0.125), 0.67) - 0.012, 0.67, 0.125 * side)
+    kg.rotation.z = -0.32
     kg.rotation.y = -endYaw('front', 0.125) * side
     g.add(kg)
   }
@@ -432,11 +509,17 @@ registerProcedural('body_shell_v2', (d) => {
   for (const side of [1, -1]) {
     g.add(mesh(new THREE.CylinderGeometry(0.1, 0.13, 0.2, d === 'low' ? 10 : 24), M.paint(), 1.5, 0.82, 0.66 * side))
   }
-  // 尾燈外側那段（在葉子板上，順著車尾轉角斜過去）
-  for (const side of [1, -1]) {
-    const t = mesh(rbox(d, 0.12, 0.12, 0.3, 0.025), lensMat(0xa3101a, 0.85, 0x5a0000), endX('rear', 0.68) + 0.06, TAIL.y + 0.02, 0.68 * side)
-    t.rotation.y = endYaw('rear', 0.68) * side
-    g.add(t)
+  // 尾燈外側那段（在葉子板上，L 形外側較高）
+  for (const side of [1, -1] as const) {
+    const T = TAILL.body
+    g.add(new THREE.Mesh(lampSkin('rear', side, T.z0, T.z1, T.yb, T.yt, 0.006, d === 'low' ? 5 : 10), lensMat(0x8a0d16, 0.92, 0x4a0000)))
+    if (d !== 'low') g.add(new THREE.Mesh(lampSkin('rear', side, T.z0 + 0.02, T.z1 - 0.04, t => T.yt(t) - 0.022, t => T.yt(t) - 0.012, 0.009, 8, 1), lensMat(0xff5a4a, 0.95, 0x6a1010)))
+  }
+  // 側面腰線：F30 從前輪拱上方經過門把、一路到尾燈的那條稜線（貼在車皮上的細亮線，讓光照出折線）
+  if (d !== 'low') {
+    const crease: [number, number][] = []
+    for (let x = 1.0; x >= -2.0; x -= 0.1) crease.push([x, SIDE_CREASE_Y(x)])
+    sideLine(d, g, crease, 0.005, M.paint, 0.0)
   }
   // 鯊魚鰭天線
   g.add(mesh(rbox(d, 0.16, 0.05, 0.05, 0.02), M.paint(), -0.87, F.top(-0.87) + 0.02, 0))
@@ -464,7 +547,7 @@ registerProcedural('bumper_rear_v2', (d) => {
   const o = ORIGIN.rbumper
   // 下擾流（黑）+ 兩側反光片
   // 車尾照 19501054：下緣黑色飾條（中間一段）、反光片在兩角（z ≈ ±0.6），順著弧面
-  g.add(mesh(rbox(d, 0.06, 0.06, 0.9, 0.02), M.glossPlastic(), endX('rear', 0.45) + 0.02 - o[0], 0.36 - o[1], 0))
+  g.add(mesh(rbox(d, 0.06, 0.06, 0.9, 0.02), M.glossPlastic(), rakeX(endX('rear', 0.45), 0.36) + 0.02 - o[0], 0.36 - o[1], 0))
   for (const side of [1, -1]) g.add(mesh(rbox(d, 0.01, 0.02, 0.2, 0.005), lensMat(0xb3121a, 0.9), endX('rear', 0.6) - o[0], 0.43 - o[1], 0.6 * side, 0, endYaw('rear', 0.6) * side, 0))
   return g
 })
@@ -472,9 +555,10 @@ registerProcedural('bumper_rear_v2', (d) => {
 registerProcedural('trunk_lid_v2', (d) => {
   const g = skinGroup(d, 'trunk', ORIGIN.trunk)
   const o = ORIGIN.trunk
-  for (const side of [1, -1]) {
-    // 車尾照：尾燈在行李廂蓋上那段約 z 0.40–0.55
-    g.add(mesh(rbox(d, 0.06, 0.08, 0.16, 0.02), lensMat(0xa3101a, 0.85, 0x5a0000), endX('rear', 0.47) + 0.025 - o[0], TAIL.y + 0.03 - o[1], 0.47 * side, 0, endYaw('rear', 0.47) * side, 0))
+  // 尾燈內側那段（在行李廂蓋上，跟著蓋子拆）
+  for (const side of [1, -1] as const) {
+    const T = TAILL.lid
+    g.add(new THREE.Mesh(lampSkin('rear', side, T.z0, T.z1, T.yb, T.yt, 0.006, d === 'low' ? 3 : 6, 3, o), lensMat(0x8a0d16, 0.92, 0x4a0000)))
   }
   return g
 })
