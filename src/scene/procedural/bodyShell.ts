@@ -355,25 +355,25 @@ registerProcedural('body_shell_v2', (d) => {
   // 頭燈：車頭兩角，往後斜，裡面兩圈「天使眼」
   for (const side of [1, -1]) {
     const hl = new THREE.Group()
-    hl.add(mesh(rbox(d, 0.11, 0.085, 0.36, 0.025), lensMat(0xdfe8f0, 0.55)))
-    hl.add(mesh(rbox(d, 0.05, 0.06, 0.28, 0.01), chrome(), -0.03, 0, 0))
-    if (d !== 'low') for (const z of [-0.06, 0.07]) {
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.004, 6, 24), lensMat(0xffffff, 0.9, 0xcfe6ff))
+    hl.add(mesh(rbox(d, 0.12, 0.09, 0.46, 0.025), lensMat(0xdfe8f0, 0.6)))
+    hl.add(mesh(rbox(d, 0.05, 0.07, 0.42, 0.01), mat(0x2a2d31, { metalness: 0.6, roughness: 0.3 }), 0.02, 0, 0))
+    if (d !== 'low') for (const z of [-0.1, 0.06]) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.036, 0.004, 6, 24), lensMat(0xffffff, 0.9, 0xcfe6ff))
       ring.rotation.y = Math.PI / 2
-      ring.position.set(0.02, 0, z)
+      ring.position.set(0.05, 0, z)
       hl.add(ring)
     }
-    hl.position.set(2.12, 0.745, 0.63 * side)
-    hl.rotation.y = -0.55 * side
+    hl.position.set(2.17, 0.725, 0.47 * side)
+    hl.rotation.y = -0.12 * side
     g.add(hl)
   }
   // 雙腎型水箱罩：鍍鉻外框 + 黑色直柵
   for (const side of [1, -1]) {
     const kg = new THREE.Group()
-    kg.add(mesh(rbox(d, 0.03, 0.12, 0.2, 0.03), chrome()))
-    kg.add(mesh(rbox(d, 0.032, 0.1, 0.18, 0.025), M.glossPlastic(), 0.002, 0, 0))
+    kg.add(mesh(rbox(d, 0.03, 0.14, 0.2, 0.035), chrome()))
+    kg.add(mesh(rbox(d, 0.032, 0.12, 0.18, 0.03), M.glossPlastic(), 0.002, 0, 0))
     if (d === 'high') for (let i = 0; i < 9; i++) kg.add(mesh(rbox(d, 0.012, 0.1, 0.006, 0.002), chrome(), 0.012, 0, -0.08 + i * 0.02))
-    kg.position.set(2.175, 0.66, 0.135 * side)
+    kg.position.set(2.19, 0.67, 0.13 * side)
     kg.rotation.z = -0.25
     kg.rotation.y = -0.12 * side
     g.add(kg)
@@ -403,7 +403,7 @@ registerProcedural('bumper_front_v2', (d) => {
   const g = skinGroup(d, 'fbumper', ORIGIN.fbumper)
   const o = ORIGIN.fbumper
   // 下進氣口與兩側進氣口（M 套件款，照 ZL 的車）
-  g.add(mesh(rbox(d, 0.04, 0.12, 0.8, 0.03), M.glossPlastic(), 2.175 - o[0], 0.4 - o[1], 0))
+  g.add(mesh(rbox(d, 0.05, 0.15, 0.95, 0.04), M.glossPlastic(), 2.195 - o[0], 0.41 - o[1], 0))
   for (const side of [1, -1]) g.add(mesh(rbox(d, 0.05, 0.13, 0.2, 0.03), M.glossPlastic(), 2.12 - o[0], 0.4 - o[1], 0.62 * side, 0, -0.45 * side, 0))
   return g
 })

@@ -152,3 +152,13 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 - 連接件小幫手在 `registry.ts`：`hexHead(d, af, h)`（六角螺栓頭，底部在 y=0）、`hoseClamp(d, r)`（管束，沿 Y 軸）；`engineParts.ts` 的 `clampLike()` 把沿 Y 的環轉到管子端點方向。low 會自動退成簡單形狀。
 - 照片確認的位置（不要改回去）：**空濾盒是車頭中間、水箱上方的 T 字形盒**（`AIRBOX` 常數，`eng.intake.airbox` 在 (1.8, 0.82, −0.04)）；**副水箱 `eng.cooling.expansion_tank` 在引擎室左前角**（1.72, 0.68, −0.58，掛在 car.root）；引擎飾蓋右前有缺口讓機油加注蓋露出來。
 - 進氣管路徑點 `P_AIRBOX_OUT` → `P_COMP_IN`，改空濾盒位置時兩端一起改。
+
+## R3–R5 之後（車殼、引擎運轉、螺栓級拆裝，2026-11-12）
+- **車殼**（`bodyShell.ts`）：照 ZL 側面照 / 車尾照描的輪廓表 `PROFILE`（yTop / yBelt / yBot / hw / hs，X 由後往前），每隔幾公分取截面放樣成一張車皮，再用 `regionOf()` 切成 `shell / hood / fbumper / rbumper / trunk` 五塊。各塊零件的 `position` 必須等於 `ORIGIN`（產生器會減掉）。改輪廓只改 `PROFILE`，`bodyShell.test.ts` 會檢查長寬高對得上規格、引擎蓋高過避震器上座。
+- 前避震器 `chs.front_strut_*` 降到 y 0.36（上座頂 0.94），避震塔在車殼裡；不要再把它們調高，會穿出引擎蓋。
+- 車色：`PAINTS`（registry.ts）+ store `paint`（localStorage `n20.paint.v1`），`M.paint()` 會帶 `userData.paint`，`PaintSync` 換色時直接改材質。預設是 ZL 實車的白（近似色，不是色號）。
+- **引擎運轉**：純邏輯在 `src/core/engineCycle.ts`（行程、點火順序、氣門開度、曲柄連桿，有測試）；動畫 `engine_running`（control `'rpm'`）在 `animations.ts` 的 `poseEngine()`。會動的節點：`piston_i` / `rod_i`（piston_rod_set）、`vi_i` / `ve_i`（valve_set）、`bal_0/1`（balance_shafts），其餘整個零件繞 X 轉。幾何常數在 `procedural/engineGeom.ts`，CYL_X 索引 3 = 1 缸（車頭）。
+- 點火順序 1-3-4-2 目前是「直列四缸常見順序」，N20 原廠資料待查證；轉速上限 7,000 rpm 來自 wiki_n20 / bmwtuning_n20。
+- 引擎外殼（缸體、缸頭、氣門室蓋、油底殼…）與車皮都標 `userData.shell`，播放任何動畫時自動半透明。
+- 引擎聲 `src/scene/engineSound.ts`：Web Audio 即時合成（不是錄音），要使用者按下才出聲。
+- **螺栓級拆裝**：純邏輯 `src/core/boltSteps.ts`，介面 `BoltDialog.tsx`，開關在檢視工具（localStorage `n20.boltMode.v1`，預設關）。store 的 `tryRemove/tryInstall` 在 boltMode 時先設 `pendingBolt`；導覽、故意做錯、全部裝回都會跳過（`skipBolts`）。扭力只在 fastener 有 source 時顯示數字。
