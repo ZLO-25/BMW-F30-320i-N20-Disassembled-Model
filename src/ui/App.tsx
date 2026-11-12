@@ -7,6 +7,7 @@ import { PartTree } from './PartTree'
 import { InfoCard } from './InfoCard'
 import { AboutModal } from './AboutModal'
 import { Tray } from './Tray'
+import { QualityToast } from './QualityToast'
 import { HintToast } from './HintToast'
 import { ViewTools } from './ViewTools'
 import { VariantModal } from './VariantModal'
@@ -103,6 +104,7 @@ function AppBody() {
         <div className="viewport">
           {WEBGL ? <Scene data={data} /> : <div className="nowebgl"><p>{ui('noWebgl', lang)}</p></div>}
           <HintToast data={data} />
+          <QualityToast />
           <ViewTools data={data} />
           <div className="touch-hint">{ui(mode === 'teardown' ? 'touchHintTeardown' : 'touchHint', lang)}</div>
         </div>

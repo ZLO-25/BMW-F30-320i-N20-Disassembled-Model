@@ -15,10 +15,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
-import { ContactShadows, Grid } from '@react-three/drei'
+import { Grid } from '@react-three/drei'
+import { HorizontalBlurShader, VerticalBlurShader } from 'three-stdlib'
+import { redraw } from './redraw'
 import { useAppStore } from '../store/useAppStore'
 import { buildWorkshop, disposeWorkshop, concreteMaterial } from './workshop'
-import type { Detail } from './procedural'
 import { applyPaint } from './procedural/registry'
 
 /** 背景與格線顏色（簡潔模式）。開 AO 時最後的 ACES 會把顏色壓暗，所以那組先調亮（U6 的補償，見 CLAUDE.md） */
@@ -47,6 +48,7 @@ export function WorkshopEnvironment({ intensity, bg }: { intensity: number; bg: 
     if (!env) return
     scene.environment = env
     scene.environmentIntensity = intensity
+    redraw()
     return () => { scene.environment = null }
   }, [scene, env, intensity])
   useEffect(() => {
@@ -59,6 +61,7 @@ export function WorkshopEnvironment({ intensity, bg }: { intensity: number; bg: 
       scene.backgroundBlurriness = 0
       scene.backgroundIntensity = 1
     }
+    redraw()
   }, [scene, env, stage, bg])
   return null
 }
@@ -99,22 +102,96 @@ export function StageFloor({ shadows, colors }: { shadows: boolean; colors: { ce
  */
 const FRAMES = 2
 const SETTLE_MS = 650
-export function SoftContactShadows({ detail }: { detail: Detail }) {
+export function SoftContactShadows({ resolution }: { resolution: 0 | 512 | 1024 }) {
   const removed = useAppStore(s => s.removedIds)
   const explode = useAppStore(s => s.explode)
   const sysVis = useAppStore(s => s.sysVis)
   const bodyMode = useAppStore(s => s.bodyMode)
   const variant = useAppStore(s => s.variant)
-  const [key, setKey] = useState(0)
+  const [trigger, setTrigger] = useState(0)
   // 拖爆炸圖滑桿時每一格都會改值：只在停下來之後重畫一次
   useEffect(() => {
-    const id = setTimeout(() => setKey(k => k + 1), SETTLE_MS)
+    const id = setTimeout(() => setTrigger(k => k + 1), SETTLE_MS)
     return () => clearTimeout(id)
   }, [removed, explode, sysVis, bodyMode, variant])
-  if (detail === 'low') return null
+  if (resolution === 0) return null
+  return <ContactShadowPlane trigger={trigger} resolution={resolution} />
+}
+
+/**
+ * 接觸陰影的繪製本體（照 drei ContactShadows 的做法改寫）。
+ * 為什麼不直接用 drei 的：它要重畫只能靠換 key 重新掛載，而且卸載時不會釋放兩張渲染目標
+ * （實測切換變速箱 6 次貼圖 +24，E0 的 F12）。這裡用 trigger 數字重畫，卸載時一定 dispose。
+ */
+const CS_SCALE: [number, number] = [6.4, 3.4]
+function ContactShadowPlane({ trigger, resolution }: { trigger: number; resolution: number }) {
+  const { gl, scene } = useThree()
+  const group = useRef<THREE.Group>(null)
+  const cam = useRef<THREE.OrthographicCamera>(null)
+  const pending = useRef(FRAMES)
+  const blur = 3.4
+  const res = useMemo(() => {
+    const target = new THREE.WebGLRenderTarget(resolution, resolution)
+    const targetBlur = new THREE.WebGLRenderTarget(resolution, resolution)
+    target.texture.generateMipmaps = targetBlur.texture.generateMipmaps = false
+    const plane = new THREE.PlaneGeometry(CS_SCALE[0], CS_SCALE[1]).rotateX(Math.PI / 2)
+    const blurPlane = new THREE.Mesh(plane)
+    const depth = new THREE.MeshDepthMaterial()
+    depth.depthTest = depth.depthWrite = false
+    depth.onBeforeCompile = (shader) => {
+      shader.uniforms = { ...shader.uniforms, ucolor: { value: new THREE.Color('#000000') } }
+      shader.fragmentShader = shader.fragmentShader
+        .replace('void main() {', 'uniform vec3 ucolor;\n void main() {')
+        .replace('vec4( vec3( 1.0 - fragCoordZ ), opacity );', 'vec4( ucolor * fragCoordZ * 2.0, ( 1.0 - fragCoordZ ) * 1.0 );')
+    }
+    const hBlur = new THREE.ShaderMaterial(HorizontalBlurShader)
+    const vBlur = new THREE.ShaderMaterial(VerticalBlurShader)
+    vBlur.depthTest = hBlur.depthTest = false
+    const mat = new THREE.MeshBasicMaterial({ map: target.texture, transparent: true, opacity: 0.8, depthWrite: false })
+    return { target, targetBlur, plane, blurPlane, depth, hBlur, vBlur, mat }
+  }, [resolution])
+  useEffect(() => () => {
+    res.target.dispose(); res.targetBlur.dispose(); res.plane.dispose(); res.depth.dispose()
+    res.hBlur.dispose(); res.vBlur.dispose(); res.mat.dispose()
+  }, [res])
+  useEffect(() => { pending.current = FRAMES; redraw() }, [trigger, res])
+
+  const blurPass = (amount: number) => {
+    const c = cam.current!
+    res.blurPlane.visible = true
+    res.blurPlane.material = res.hBlur
+    res.hBlur.uniforms.tDiffuse.value = res.target.texture
+    res.hBlur.uniforms.h.value = amount / 256
+    gl.setRenderTarget(res.targetBlur); gl.render(res.blurPlane, c)
+    res.blurPlane.material = res.vBlur
+    res.vBlur.uniforms.tDiffuse.value = res.targetBlur.texture
+    res.vBlur.uniforms.v.value = amount / 256
+    gl.setRenderTarget(res.target); gl.render(res.blurPlane, c)
+    res.blurPlane.visible = false
+  }
+  useFrame(() => {
+    const c = cam.current, g = group.current
+    if (!c || !g || pending.current <= 0) return
+    pending.current--
+    const bg = scene.background, ov = scene.overrideMaterial
+    g.visible = false
+    scene.background = null
+    scene.overrideMaterial = res.depth
+    gl.setRenderTarget(res.target)
+    gl.render(scene, c)
+    blurPass(blur)
+    blurPass(blur * 0.4)
+    gl.setRenderTarget(null)
+    g.visible = true
+    scene.overrideMaterial = ov
+    scene.background = bg
+    if (pending.current > 0) redraw()
+  })
   return (
-    <ContactShadows key={key} frames={FRAMES} position={[0, 0.003, 0]} scale={[6.4, 3.4]}
-      resolution={detail === 'high' ? 1024 : 512} blur={3.4} far={1.4} opacity={0.8} color="#000000" />
+    <group ref={group} position={[0, 0.003, 0]} rotation-x={Math.PI / 2}>
+      <mesh geometry={res.plane} material={res.mat} scale={[1, -1, 1]} rotation={[-Math.PI / 2, 0, 0]} />
+      <orthographicCamera ref={cam} args={[-CS_SCALE[0] / 2, CS_SCALE[0] / 2, CS_SCALE[1] / 2, -CS_SCALE[1] / 2, 0, 1.4]} />
+    </group>
   )
 }
 
@@ -137,14 +214,15 @@ export function WorkLight() {
     if (!l || !c?.target) return
     const dist = camera.position.distanceTo(c.target)
     const k = THREE.MathUtils.clamp((FAR - dist) / (FAR - NEAR), 0, 1)
-    l.visible = k > 0.001
-    if (!l.visible) return
+    // E1：燈一直在場景裡（visible 不切換），遠的時候強度 0。切換 visible 會改變場景的燈數，
+    // three 會讓所有材質重新編譯著色器（E0 實測第一次拉近 +17 支，會頓一下）。
+    l.intensity = k * k * 3.2 * dist * dist
+    if (k <= 0.001) return
     right.setFromMatrixColumn(camera.matrixWorld, 0)
     up.setFromMatrixColumn(camera.matrixWorld, 1)
     l.position.copy(camera.position).addScaledVector(right, 0.12).addScaledVector(up, 0.1)
     target.position.copy(c.target)
     l.target = target
-    l.intensity = k * k * 3.2 * dist * dist
   })
   return <spotLight ref={light} angle={0.5} penumbra={0.85} decay={2} distance={0} color="#fff4e6" castShadow={false} />
 }

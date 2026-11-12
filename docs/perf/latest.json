@@ -1,0 +1,145 @@
+{
+ "when": "2026-11-12T06:18:55.644Z",
+ "chunks": {
+  "CompareView": {
+   "rawKB": 4,
+   "gzipKB": 2
+  },
+  "LearnPanel": {
+   "rawKB": 17,
+   "gzipKB": 5
+  },
+  "MaintenancePanel": {
+   "rawKB": 4,
+   "gzipKB": 1
+  },
+  "index": {
+   "rawKB": 511,
+   "gzipKB": 155
+  },
+  "three": {
+   "rawKB": 737,
+   "gzipKB": 190
+  },
+  "vendor": {
+   "rawKB": 810,
+   "gzipKB": 277
+  }
+ },
+ "runs": {
+  "high": {
+   "msToStats": 11331,
+   "fps": 0,
+   "calls": 1630,
+   "triangles": 2605876,
+   "geometries": 416,
+   "dpr": 1,
+   "frameMsP50": 3284.8,
+   "frameMsP95": 9970.3,
+   "programs": 35,
+   "textures": 45,
+   "renders": 4,
+   "heapMB": 80,
+   "longTasks": {
+    "count": 8,
+    "longestMs": 9962
+   },
+   "scene": {
+    "meshes": 412,
+    "triangles": 665862
+   },
+   "idleRendersIn3s": 2,
+   "moving": {
+    "frames": 3,
+    "p50": 2117,
+    "p95": 2150
+   },
+   "zoomIn": {
+    "programsFar": 35,
+    "programsNear": 52
+   },
+   "switch6": {
+    "texturesBefore": 45,
+    "texturesAfter": 69,
+    "geometriesBefore": 416,
+    "geometriesAfter": 428
+   }
+  },
+  "mid": {
+   "msToStats": 9863,
+   "fps": 2,
+   "calls": 405,
+   "triangles": 228309,
+   "geometries": 415,
+   "dpr": 1,
+   "frameMsP50": 721.6,
+   "frameMsP95": 6308.5,
+   "programs": 32,
+   "textures": 29,
+   "renders": 10,
+   "heapMB": 53,
+   "longTasks": {
+    "count": 14,
+    "longestMs": 6302
+   },
+   "scene": {
+    "meshes": 411,
+    "triangles": 223230
+   },
+   "idleRendersIn3s": 5,
+   "moving": {
+    "frames": 12,
+    "p50": 567,
+    "p95": 600
+   },
+   "zoomIn": {
+    "programsFar": 32,
+    "programsNear": 49
+   },
+   "switch6": {
+    "texturesBefore": 29,
+    "texturesAfter": 53,
+    "geometriesBefore": 415,
+    "geometriesAfter": 427
+   }
+  },
+  "low": {
+   "msToStats": 6374,
+   "fps": 4,
+   "calls": 372,
+   "triangles": 76270,
+   "geometries": 370,
+   "dpr": 1,
+   "frameMsP50": 278.1,
+   "frameMsP95": 467.1,
+   "programs": 18,
+   "textures": 9,
+   "renders": 22,
+   "heapMB": 45,
+   "longTasks": {
+    "count": 27,
+    "longestMs": 4717
+   },
+   "scene": {
+    "meshes": 408,
+    "triangles": 79620
+   },
+   "idleRendersIn3s": 12,
+   "moving": {
+    "frames": 25,
+    "p50": 233,
+    "p95": 300
+   },
+   "zoomIn": {
+    "programsFar": 18,
+    "programsNear": 35
+   },
+   "switch6": {
+    "texturesBefore": 9,
+    "texturesAfter": 9,
+    "geometriesBefore": 409,
+    "geometriesAfter": 409
+   }
+  }
+ }
+}

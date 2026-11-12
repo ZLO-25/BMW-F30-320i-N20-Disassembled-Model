@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { useAppStore } from '../store/useAppStore'
 import { ANIM_BY_ID, resetAnim } from './animations'
 import { PartRegistryCtx } from './PartNode'
+import { redraw } from './redraw'
 
 /** 每格畫面套用目前的動畫；播放中會自動推滑桿（來回） */
 export function AnimationDriver() {
@@ -16,12 +17,14 @@ export function AnimationDriver() {
   useEffect(() => {
     resetAnim(id => registry.get(id))
     t0.current = performance.now() / 1000
+    redraw(true)
   }, [animId, registry])
 
   useFrame((_, dt) => {
     const s = useAppStore.getState()
     const def = s.anim ? ANIM_BY_ID.get(s.anim) : undefined
     if (!def || !s.variant) return
+    redraw(true)   // 所有動畫都靠 time 在轉（旋轉），播放中每格都要畫
     let t = s.animT
     if (s.animPlaying && def.control === 'slider') {
       t += dir.current * dt * 0.22

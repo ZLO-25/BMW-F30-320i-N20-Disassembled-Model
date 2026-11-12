@@ -349,3 +349,12 @@ p.verdict { margin: 0; }
 .hold-btn { position: relative; overflow: hidden; display: block; margin-top: 6px; min-width: 160px; padding: 8px 12px; border-radius: 6px; touch-action: none; user-select: none; }
 .hold-fill { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(255, 179, 0, 0.45); }
 .hold-label { position: relative; }
+/* E0：?bench=1 跑分結果 */
+.bench-result { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 90; max-width: min(92vw, 520px);
+  padding: 14px 16px; border-radius: 10px; background: rgba(10,12,16,.94); border: 1px solid var(--line); color: #dfe; }
+.bench-result pre { margin: 8px 0; white-space: pre-wrap; word-break: break-all; font: 12px/1.5 ui-monospace, monospace; user-select: all; }
+.bench-result button { margin-right: 8px; }
+
+/* E2：自動降級提示、檢視工具裡畫質的說明 */
+.quality-toast { top: 56px; }
+.tools-note { margin: 2px 0 6px; }

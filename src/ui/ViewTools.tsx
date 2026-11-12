@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { DataBundle } from '../core/loadData'
-import { t, ui, SUBSYSTEM_NAMES, type UiKey } from '../core/i18n'
+import { t, ui, fmt, SUBSYSTEM_NAMES, type UiKey } from '../core/i18n'
 import { useAppStore, PAINT_KEYS, type SysVis } from '../store/useAppStore'
 
 const SECTION_RANGE = { x: [0.5, 2.3], z: [-0.55, 0.55] } as const
@@ -25,6 +25,10 @@ export function ViewTools({ data }: { data: DataBundle }) {
   const setBoltMode = useAppStore(s => s.setBoltMode)
   const paint = useAppStore(s => s.paint)
   const setPaint = useAppStore(s => s.setPaint)
+  const qMode = useAppStore(s => s.qualityMode)
+  const qLevel = useAppStore(s => s.qualityLevel)
+  const qLocked = useAppStore(s => s.qualityLocked)
+  const setQMode = useAppStore(s => s.setQualityMode)
 
   const subs = useMemo(() => {
     const seen = new Set<string>()
@@ -82,6 +86,17 @@ export function ViewTools({ data }: { data: DataBundle }) {
         <span>{ui('boltMode', lang)}</span>
         <input type="checkbox" checked={boltMode} onChange={e => setBoltMode(e.target.checked)} />
       </label>
+      <div className="row">
+        <span>{ui('quality', lang)}</span>
+        <div className="seg" role="group" aria-label={ui('quality', lang)}>
+          {(['auto', 'smooth', 'balanced', 'fine'] as const).map(m => (
+            <button key={m} className={qMode === m && !qLocked ? 'on' : ''} onClick={() => setQMode(m)}>
+              {ui(m === 'auto' ? 'qualityAuto' : m === 'smooth' ? 'qualitySmooth' : m === 'balanced' ? 'qualityBalanced' : 'qualityFine', lang)}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="muted small tools-note">{fmt(ui('qualityNow', lang), { n: qLevel })}</p>
       <div className="row"><span>{ui('systems', lang)}</span><button className="link" onClick={() => isolate(null, subs)}>{ui('showAll', lang)}</button></div>
       <ul className="sys-list">
         {subs.map(sub => {

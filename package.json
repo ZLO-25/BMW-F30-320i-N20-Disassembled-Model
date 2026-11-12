@@ -12,7 +12,8 @@
     "validate": "tsx scripts/validate.ts",
     "report:verify": "tsx scripts/reportVerify.ts",
     "report:claims": "tsx scripts/reportClaims.ts",
-    "e2e": "node scripts/e2e-smoke.cjs"
+    "e2e": "node scripts/e2e-smoke.cjs",
+    "perf": "node scripts/perf-bench.cjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",
