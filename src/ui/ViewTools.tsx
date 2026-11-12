@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import type { DataBundle } from '../core/loadData'
 import { t, ui, SUBSYSTEM_NAMES, type UiKey } from '../core/i18n'
 import { useAppStore, PAINT_KEYS, type SysVis } from '../store/useAppStore'
+import { useOverlayStore } from '../store/useOverlayStore'
 
 const SECTION_RANGE = { x: [0.5, 2.3], z: [-0.55, 0.55] } as const
 const SECTION_DEFAULT = { x: 1.15, z: 0 }
@@ -25,6 +26,8 @@ export function ViewTools({ data }: { data: DataBundle }) {
   const setBoltMode = useAppStore(s => s.setBoltMode)
   const paint = useAppStore(s => s.paint)
   const setPaint = useAppStore(s => s.setPaint)
+  const overlayOpen = useOverlayStore(s => s.panelOpen)
+  const setOverlayOpen = useOverlayStore(s => s.setPanelOpen)
 
   const subs = useMemo(() => {
     const seen = new Set<string>()
@@ -82,6 +85,7 @@ export function ViewTools({ data }: { data: DataBundle }) {
         <span>{ui('boltMode', lang)}</span>
         <input type="checkbox" checked={boltMode} onChange={e => setBoltMode(e.target.checked)} />
       </label>
+      <button className={overlayOpen ? 'on' : ''} onClick={() => { setOverlayOpen(!overlayOpen); if (!overlayOpen) setOpen(false) }}>{ui('overlayOpen', lang)}</button>
       <div className="row"><span>{ui('systems', lang)}</span><button className="link" onClick={() => isolate(null, subs)}>{ui('showAll', lang)}</button></div>
       <ul className="sys-list">
         {subs.map(sub => {

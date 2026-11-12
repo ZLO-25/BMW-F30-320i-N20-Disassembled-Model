@@ -162,3 +162,10 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 - 引擎外殼（缸體、缸頭、氣門室蓋、油底殼…）與車皮都標 `userData.shell`，播放任何動畫時自動半透明。
 - 引擎聲 `src/scene/engineSound.ts`：Web Audio 即時合成（不是錄音），要使用者按下才出聲。
 - **螺栓級拆裝**：純邏輯 `src/core/boltSteps.ts`，介面 `BoltDialog.tsx`，開關在檢視工具（localStorage `n20.boltMode.v1`，預設關）。store 的 `tryRemove/tryInstall` 在 boltMode 時先設 `pendingBolt`；導覽、故意做錯、全部裝回都會跳過（`skipBolts`）。扭力只在 fastener 有 source 時顯示數字。
+
+## R6-B 之後（實車照片疊圖，2026-11-12）
+- 檢視工具 →「📷 實車照片疊圖」：純邏輯 `src/core/photoOverlay.ts`（焦距 → 視角、標準視角、讀 EXIF 35mm 等效焦距，有測試），狀態 `src/store/useOverlayStore.ts`（調整值存 localStorage `n20.overlay.v1`），介面 `src/ui/PhotoOverlay.tsx`（React.lazy），鏡頭 `src/scene/OverlayCamera.tsx`。
+- **照片只用 `URL.createObjectURL` 放在記憶體**，不上傳、不存 localStorage；ZL 的照片含車牌，仍然不能放進 repo（截圖也不行）。
+- 有照片且面板開著時，3D 鏡頭的視角 = 照片的視角（`cameraVfov(vfovFromFocal35(...), scale)`），只暫時隱藏照片時視角不變；關掉面板回到 42°。
+- `CAR`（photoOverlay.ts）是車身外形常數，要和 `bodyShell.ts` 的 `BODY_X` 一致，`bodyShell.test.ts` 會檢查。
+- 手機照片 EXIF 的焦距不一定可信：ZL 側面照記 24 mm，反推實際約 45 mm（裁切 / 變焦），而且畫面中心往下偏（`dy ≈ −23%`）。

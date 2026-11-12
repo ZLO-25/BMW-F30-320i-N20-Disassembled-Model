@@ -10,6 +10,8 @@ import { useAppStore } from '../store/useAppStore'
 import { PartNode, PartRegistryCtx, ghostTuning } from './PartNode'
 import { AnimationDriver } from './AnimationDriver'
 import { PerfStats, statsEnabled } from './PerfStats'
+import { OverlayCamera, DEFAULT_FOV } from './OverlayCamera'
+import { useOverlayStore, overlayCamera } from '../store/useOverlayStore'
 import { WorkshopEnvironment, StageFloor, SoftContactShadows, WorkLight, PaintSync, STUDIO_COLORS } from './Stage'
 import type { Detail } from './procedural'
 
@@ -93,6 +95,8 @@ export function Scene({ data }: { data: DataBundle }) {
   const registry = useMemo(() => new Map<string, THREE.Object3D>(), [])
   const select = useAppStore(s => s.select)
   const detail = useMemo(pickDetail, [])
+  // R6-B：疊遠拍、變焦的照片時鏡頭要能退得很遠
+  const overlayOn = useOverlayStore(overlayCamera)
   const ao = aoEnabled(detail)
   // AO 開啟時：最後一步的 ACES 也會套到背景與格線上（會變得幾乎全黑），所以先給亮一點的顏色，
   // 算過 ACES 之後剛好回到原本的 #15171b / #262a31 / #363c46；半透明倍率也一起調（見 PartNode ghostTuning）
@@ -108,7 +112,7 @@ export function Scene({ data }: { data: DataBundle }) {
     <Canvas
       dpr={dpr}
       shadows={shadows}
-      camera={{ position: CAMERA_POS.toArray(), fov: 42, near: 0.05, far: 100 }}
+      camera={{ position: CAMERA_POS.toArray(), fov: DEFAULT_FOV, near: 0.05, far: 100 }}
       onPointerMissed={() => select(null)}
       gl={{ antialias: !mobile, powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}>
       <PerformanceMonitor bounds={() => [30, 55]} flipflops={4}
@@ -128,8 +132,9 @@ export function Scene({ data }: { data: DataBundle }) {
         <AnimationDriver />
       </PartRegistryCtx.Provider>
       <OrbitControls ref={controls} makeDefault target={TARGET.toArray()} enableDamping dampingFactor={0.1}
-        minDistance={0.25} maxDistance={12} maxPolarAngle={Math.PI * 0.78} />
+        minDistance={0.25} maxDistance={overlayOn ? 40 : 12} maxPolarAngle={Math.PI * 0.78} />
       <CameraReset controls={controls} />
+      <OverlayCamera />
       <SectionPlane />
       {ao && <PostFX detail={detail} />}
       {statsEnabled() && <PerfStats />}

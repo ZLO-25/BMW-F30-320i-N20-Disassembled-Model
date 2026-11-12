@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
+import { CAR } from '../../core/photoOverlay'
 import { buildSkin, section, fineSection, regionOf, stations, BODY_X, SPLIT, type Region } from './bodyShell'
 
 const bbox = (r: Region) => {
@@ -47,5 +48,10 @@ describe('R3 車殼（照片描邊放樣）', () => {
     expect(regionOf(2.15, 3)).toBe('fbumper')
     expect(regionOf(-2.0, 9)).toBe('trunk')
     expect(regionOf(-2.0, 4)).toBe('rbumper')
+  })
+
+  it('R6-B 疊圖用的車身常數 CAR 和車皮一致', () => {
+    expect(CAR.centerX).toBeCloseTo((BODY_X.front + BODY_X.rear) / 2, 6)
+    expect(CAR.length).toBeCloseTo(BODY_X.front - BODY_X.rear, 2)
   })
 })
