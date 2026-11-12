@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import type { DataBundle } from '../core/loadData'
-import { t, ui, SUBSYSTEM_NAMES } from '../core/i18n'
-import { useAppStore, type SysVis } from '../store/useAppStore'
+import { t, ui, SUBSYSTEM_NAMES, type UiKey } from '../core/i18n'
+import { useAppStore, PAINT_KEYS, type SysVis } from '../store/useAppStore'
 
 const SECTION_RANGE = { x: [0.5, 2.3], z: [-0.55, 0.55] } as const
 const SECTION_DEFAULT = { x: 1.15, z: 0 }
@@ -21,6 +21,8 @@ export function ViewTools({ data }: { data: DataBundle }) {
   const isolate = useAppStore(s => s.isolate)
   const stage = useAppStore(s => s.stage)
   const setStage = useAppStore(s => s.setStage)
+  const paint = useAppStore(s => s.paint)
+  const setPaint = useAppStore(s => s.setPaint)
 
   const subs = useMemo(() => {
     const seen = new Set<string>()
@@ -67,6 +69,12 @@ export function ViewTools({ data }: { data: DataBundle }) {
             </button>
           ))}
         </div>
+      </div>
+      <div className="row">
+        <span>{ui('paint', lang)}</span>
+        <select value={paint} onChange={e => setPaint(e.target.value as typeof paint)}>
+          {PAINT_KEYS.map(k => <option key={k} value={k}>{ui(`paint_${k}` as UiKey, lang)}</option>)}
+        </select>
       </div>
       <div className="row"><span>{ui('systems', lang)}</span><button className="link" onClick={() => isolate(null, subs)}>{ui('showAll', lang)}</button></div>
       <ul className="sys-list">

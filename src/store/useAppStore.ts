@@ -6,6 +6,8 @@ import {
   emptyTeardown, removedSet, checkRemove, checkInstall, applyRemove, applyInstall, undoEntry, redoEntry,
   type TeardownState, type HistoryEntry,
 } from '../core/disassembly'
+import type { PaintKey } from '../scene/procedural/registry'
+export const PAINT_KEYS = ['zl_white', 'blue', 'black', 'silver', 'red'] as const
 
 export type BodyMode = 'solid' | 'xray' | 'hidden'
 export type DrawerTab = 'tree' | 'info' | 'tray' | 'anim' | 'learn' | 'maint'
@@ -84,6 +86,9 @@ interface AppState {
   sysVis: Record<string, SysVis>
   toolsOpen: boolean
   stage: Stage
+  /** R3 車漆顏色 */
+  paint: PaintKey
+  setPaint: (p: PaintKey) => void
 
   // ── P5 ──
   progress: Progress
@@ -197,6 +202,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   sysVis: {},
   toolsOpen: false,
   stage: safeGet('n20.stage.v1') === 'studio' ? 'studio' : 'workshop',
+  paint: (PAINT_KEYS as readonly string[]).includes(safeGet('n20.paint.v1') ?? '') ? safeGet('n20.paint.v1') as PaintKey : 'zl_white',
 
   progress: loadProgress(),
   toolsInHand: new Set(),
@@ -321,6 +327,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   }),
   setToolsOpen: (toolsOpen) => set({ toolsOpen }),
   setStage: (stage) => { safeSet('n20.stage.v1', stage); set({ stage }) },
+  setPaint: (paint) => { safeSet('n20.paint.v1', paint); set({ paint }) },
 
   // ── P5 ──
   setProgress: (progress) => { saveProgress(progress); set({ progress }) },

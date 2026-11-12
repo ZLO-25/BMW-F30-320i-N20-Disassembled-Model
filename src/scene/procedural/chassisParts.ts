@@ -272,21 +272,7 @@ registerProcedural('sensor_pair_v1', (d) => grp('',
 ))
 
 // ───────────────────────── 車身蓋板 ─────────────────────────
-registerProcedural('bumper_front_v1', (d) => {
-  const g = grp()
-  g.add(new THREE.Mesh(tube(d, [[-0.15, 0, -0.95], [0.05, 0, -0.7], [0.1, 0, 0], [0.05, 0, 0.7], [-0.15, 0, 0.95]], 0.17), M.paint()))
-  g.add(mesh(rbox(d, 0.08, 0.14, 0.7, 0.03), M.dark(), 0.06, -0.08, 0))   // 下進氣口
-  return g
-})
-registerProcedural('bumper_rear_v1', (d) => {
-  const g = grp()
-  g.add(new THREE.Mesh(tube(d, [[0.15, 0, -0.95], [-0.05, 0, -0.7], [-0.1, 0, 0], [-0.05, 0, 0.7], [0.15, 0, 0.95]], 0.17), M.paint()))
-  return g
-})
-registerProcedural('trunk_lid_v1', (d) => grp('',
-  mesh(rbox(d, 0.75, 0.025, 1.4, 0.015), M.paint()),
-  mesh(rbox(d, 0.03, 0.12, 1.36, 0.01), M.paint(), -0.37, -0.07, 0),
-))
+// 前後保桿、行李廂蓋、引擎蓋在 R3 改由 bodyShell.ts 從同一張車皮切出來（*_v2）
 registerProcedural('undertray_v1', (d) => grp('',
   mesh(rbox(d, 1.3, 0.01, 1.1, 0.02), M.blackPlastic()),
   mesh(rbox(d, 0.4, 0.01, 0.3, 0.01), M.blackPlastic(), 0, 0.005, 0),

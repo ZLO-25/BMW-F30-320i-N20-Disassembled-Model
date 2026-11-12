@@ -39,6 +39,28 @@ export const COLORS = {
   glass: 0x8fb5e8,
 }
 
+/**
+ * R3 車漆顏色。白色是照 ZL 實車照片挑的近似色（不是原廠色號）；其他是常見的 F30 顏色，給教學對照用。
+ * 換顏色時 `applyPaint()` 直接改場景裡所有車漆材質，不用重建模型。
+ */
+export const PAINTS = {
+  zl_white: { color: 0xe4e5e3, metalness: 0.35, roughness: 0.3 },
+  blue: { color: COLORS.body, metalness: 0.6, roughness: 0.32 },
+  black: { color: 0x0e1013, metalness: 0.55, roughness: 0.28 },
+  silver: { color: 0xa9adb2, metalness: 0.8, roughness: 0.3 },
+  red: { color: 0x7d141b, metalness: 0.5, roughness: 0.3 },
+} as const
+export type PaintKey = keyof typeof PAINTS
+let paintKey: PaintKey = 'zl_white'
+export function applyPaint(key: PaintKey, root?: THREE.Object3D) {
+  paintKey = key
+  const p = PAINTS[key]
+  root?.traverse(o => {
+    const m = (o as THREE.Mesh).material as THREE.MeshPhysicalMaterial | undefined
+    if (m && !Array.isArray(m) && m.userData?.paint) { m.color.setHex(p.color); m.metalness = p.metalness; m.roughness = p.roughness }
+  })
+}
+
 /** 鑄件表面的細微顆粒：一張共用的平滑雜訊貼圖當 bumpMap（不用 DOM，測試環境也能跑） */
 let noise: THREE.DataTexture | null = null
 function noiseTex(): THREE.DataTexture {
@@ -106,7 +128,12 @@ export const M = {
   filter: () => mat(0xe8dcb0, { metalness: 0, roughness: 0.95, bumpMap: noiseTex(), bumpScale: 0.2 }),
   heatShield: () => mat(0xc4c7cb, { metalness: 0.9, roughness: 0.4, bumpMap: noiseTex(), bumpScale: 0.35 }),
   dark: () => mat(0x0c0d0f, { metalness: 0, roughness: 0.9 }),
-  paint: () => new THREE.MeshPhysicalMaterial({ color: COLORS.body, metalness: 0.6, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.08 }),
+  paint: () => {
+    const p = PAINTS[paintKey]
+    const m = new THREE.MeshPhysicalMaterial({ color: p.color, metalness: p.metalness, roughness: p.roughness, clearcoat: 1, clearcoatRoughness: 0.08 })
+    m.userData.paint = true
+    return m
+  },
   orange: () => mat(0xd9731a, { metalness: 0, roughness: 0.5 }),
 }
 

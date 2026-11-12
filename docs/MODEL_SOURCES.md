@@ -54,5 +54,5 @@ N20 引擎：在 Sketchfab、GrabCAD、Printables、Thingiverse 都沒找到 BMW
 1. 打開 #1 的網址，登入 Sketchfab，按「Download 3D Model」，選 **glTF（.glb）**。
 2. 到作者的個人頁看一下描述，確認不是遊戲拆出的模型。不確定就先不要用，App 會用簡化車殼。
 3. 檔案改名為 `f30_body.glb`，放到 `public/models/`。
-4. 在 `data/parts/body.json` 把車殼的 `modelRef` 從 `procedural:body_shell_v1` 改成 `glb:/models/f30_body.glb`，不用改程式。
+4. 在 `data/parts/body.json` 把車殼的 `modelRef` 從 `procedural:body_shell_v2` 改成 `glb:/models/f30_body.glb`，不用改程式。
 5. 把作者、授權、網址填進 `CREDITS.md`（App 的「關於」頁會自動讀取）。
