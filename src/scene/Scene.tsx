@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
-import { OrbitControls, Grid, PerformanceMonitor } from '@react-three/drei'
+import { OrbitControls, PerformanceMonitor } from '@react-three/drei'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import * as THREE from 'three'
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
-import { EffectComposer, N8AO, ToneMapping } from '@react-three/postprocessing'
+import { EffectComposer, N8AO, ToneMapping, Bloom } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
 import type { DataBundle } from '../core/loadData'
 import { useAppStore } from '../store/useAppStore'
 import { PartNode, PartRegistryCtx, ghostTuning } from './PartNode'
 import { AnimationDriver } from './AnimationDriver'
 import { PerfStats, statsEnabled } from './PerfStats'
+import { WorkshopEnvironment, StageFloor, SoftContactShadows, WorkLight, STUDIO_COLORS } from './Stage'
 import type { Detail } from './procedural'
 
 const CAMERA_POS = new THREE.Vector3(2.7, 1.5, 2.3)
@@ -49,22 +49,6 @@ function CameraReset({ controls }: { controls: React.RefObject<OrbitControlsImpl
 }
 
 /**
- * 環境光：用 three 內建的「攝影棚房間」即時產生反射貼圖。
- * 不從網路抓 HDR 檔，離線、GitHub Pages、被擋的網路都能用。
- */
-function StudioEnvironment({ intensity }: { intensity: number }) {
-  const { gl, scene } = useThree()
-  useEffect(() => {
-    const pmrem = new THREE.PMREMGenerator(gl)
-    const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
-    scene.environment = env
-    scene.environmentIntensity = intensity
-    return () => { scene.environment = null; env.dispose(); pmrem.dispose() }
-  }, [gl, scene, intensity])
-  return null
-}
-
-/**
  * U6 環境遮蔽（AO）：角落、縫隙、零件互相靠近的地方自然變暗，立體感差很多。
  *
  *   一般繪製 ──► 深度圖 ──► N8AO 算「這一點周圍被擋住多少」──► 變暗 ──► ACES 色調 ──► 畫面
@@ -83,6 +67,8 @@ function PostFX({ detail }: { detail: Detail }) {
     <EffectComposer multisampling={high ? 4 : 0}>
       {/* 半徑單位是公尺：0.15 m ≈ 零件之間的縫隙、螺栓座、凹槽這種尺度 */}
       <N8AO aoRadius={0.15} distanceFalloff={0.6} intensity={high ? 3 : 2.5} quality={high ? 'medium' : 'low'} halfRes={!high} />
+      {/* R1：只有真的很亮的地方（燈管在鍍鉻、車漆上的反光）才會微微泛光，像相機拍到的那樣；只在 high */}
+      {high ? <Bloom luminanceThreshold={1.1} luminanceSmoothing={0.3} intensity={0.35} mipmapBlur radius={0.55} /> : null}
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
     </EffectComposer>
   )
@@ -110,7 +96,7 @@ export function Scene({ data }: { data: DataBundle }) {
   const ao = aoEnabled(detail)
   // AO 開啟時：最後一步的 ACES 也會套到背景與格線上（會變得幾乎全黑），所以先給亮一點的顏色，
   // 算過 ACES 之後剛好回到原本的 #15171b / #262a31 / #363c46；半透明倍率也一起調（見 PartNode ghostTuning）
-  const bg = ao ? { bg: '#27292d', cell: '#36393f', section: '#42474f' } : { bg: '#15171b', cell: '#262a31', section: '#363c46' }
+  const bg = ao ? STUDIO_COLORS.ao : STUDIO_COLORS.plain
   ghostTuning.scale = ao ? GHOST_SCALE_AO : 1
   const mobile = detail !== 'high'
   const shadows = !mobile
@@ -127,20 +113,15 @@ export function Scene({ data }: { data: DataBundle }) {
       gl={{ antialias: !mobile, powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}>
       <PerformanceMonitor bounds={() => [30, 55]} flipflops={4}
         onDecline={() => setDpr(1)} onIncline={() => setDpr(maxDpr)} onFallback={() => setDpr(1)} />
-      <color attach="background" args={[bg.bg]} />
-      <StudioEnvironment intensity={mobile ? 0.7 : 0.85} />
+      <WorkshopEnvironment intensity={mobile ? 0.9 : 1} bg={bg.bg} />
       <hemisphereLight intensity={0.35} groundColor="#1a1a1a" />
       <directionalLight position={[4, 6, 3]} intensity={2.2} castShadow={shadows}
         shadow-mapSize={[2048, 2048]} shadow-bias={-0.0004} shadow-normalBias={0.01}
         shadow-camera-left={-2.5} shadow-camera-right={2.5} shadow-camera-top={2.5} shadow-camera-bottom={-2.5} shadow-camera-near={1} shadow-camera-far={16} />
       <directionalLight position={[-3, 2.5, -4]} intensity={0.6} />
-      {shadows && (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.0005, 0]} receiveShadow>
-          <planeGeometry args={[12, 12]} />
-          <shadowMaterial opacity={0.35} />
-        </mesh>
-      )}
-      <Grid args={[20, 20]} position={[0, 0.001, 0]} cellColor={bg.cell} sectionColor={bg.section} fadeDistance={16} infiniteGrid />
+      <StageFloor shadows={shadows} colors={bg} />
+      <SoftContactShadows detail={detail} />
+      <WorkLight />
       <PartRegistryCtx.Provider value={registry}>
         {data.graph.roots.map(r => <PartNode key={r.id} part={r} graph={data.graph} detail={detail} shadows={shadows} />)}
         <AnimationDriver />

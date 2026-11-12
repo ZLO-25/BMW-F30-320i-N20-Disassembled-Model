@@ -4,7 +4,7 @@ import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import { useShallow } from 'zustand/react/shallow'
 import type { Part } from '../core/schema'
 import type { PartGraph } from '../core/partGraph'
-import { useAppStore, type SysVis } from '../store/useAppStore'
+import { useAppStore, type SysVis, type Stage } from '../store/useAppStore'
 import { parseModelRef, useProceduralObject, disposeObject, GlbObject } from './ModelResolver'
 import type { Detail } from './procedural'
 
@@ -38,7 +38,10 @@ function applyHighlight(root: THREE.Object3D, look: Look) {
  * （車殼變成一層藍霧）。Scene 會在 AO 開啟時把這個倍率調低，讓透視模式看起來和以前差不多。
  */
 export const ghostTuning = { scale: 1 }
-const ghostOpacityFor = (isBody: boolean) => (isBody ? 0.12 : 0.14) * ghostTuning.scale
+/** R1：修車廠背景是亮的水泥地與牆，深藍半透明的車殼疊上去幾乎看不見，所以工作室模式把車殼的透明度加倍 */
+const WORKSHOP_BODY_BOOST = 2.2
+const ghostOpacityFor = (isBody: boolean, stage: Stage) =>
+  (isBody ? 0.12 * (stage === 'workshop' ? WORKSHOP_BODY_BOOST : 1) : 0.14) * ghostTuning.scale
 
 type SpecBase = { metalness: number; roughness: number; envMapIntensity: number; clearcoat?: number }
 
@@ -96,7 +99,7 @@ export function PartNode({ part, graph, detail, shadows }: Props) {
   const ref = useRef<THREE.Group>(null)
   // 審查 S5：一個節點只訂閱一次（useShallow），不要 11 個 selector；163 個零件 × 11 = 1,800 個 listener，
   // 滑鼠掃過零件時每次 hover() 都要跑完它們。hint 只取「有沒有擋到我」的 token，不訂閱整個物件。
-  const { selected, hovered, removed, parentRemoved, blockedToken, bodyMode, sysVis, mode, shellGhost } = useAppStore(useShallow(s => ({
+  const { selected, hovered, removed, parentRemoved, blockedToken, bodyMode, sysVis, mode, shellGhost, stage } = useAppStore(useShallow(s => ({
     selected: s.selectedId === part.id,
     hovered: s.hoveredId === part.id,
     removed: s.removedIds.has(part.id),
@@ -106,6 +109,7 @@ export function PartNode({ part, graph, detail, shadows }: Props) {
     sysVis: s.sysVis[part.subsystem] ?? 'show',
     mode: s.mode,
     shellGhost: s.anim !== null,
+    stage: s.stage,
   })))
   const registry = useContext(PartRegistryCtx)
   const children = graph.children.get(part.id) ?? []
@@ -130,7 +134,7 @@ export function PartNode({ part, graph, detail, shadows }: Props) {
   const visRef = useRef(vis); visRef.current = vis
 
   useEffect(() => { if (modelHolder.current) applyHighlight(modelHolder.current, look) }, [look.color, look.intensity]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (modelHolder.current) applyVisibility(modelHolder.current, vis, ghostOpacityFor(isBody), shellGhost) }, [vis, isBody, shellGhost])
+  useEffect(() => { if (modelHolder.current) applyVisibility(modelHolder.current, vis, ghostOpacityFor(isBody, stage), shellGhost) }, [vis, isBody, shellGhost, stage])
   useEffect(() => () => { registry.delete(part.id) }, [registry, part.id])
   useEffect(() => { if (modelHolder.current) applyShadows(modelHolder.current, shadows && !isBody) }, [shadows, isBody])
 
@@ -138,7 +142,7 @@ export function PartNode({ part, graph, detail, shadows }: Props) {
     modelHolder.current = o
     registry.set(part.id, o)
     applyHighlight(o, lookRef.current)
-    applyVisibility(o, visRef.current, ghostOpacityFor(isBody), useAppStore.getState().anim !== null)
+    applyVisibility(o, visRef.current, ghostOpacityFor(isBody, useAppStore.getState().stage), useAppStore.getState().anim !== null)
     applyShadows(o, shadows && !isBody)
   }
 

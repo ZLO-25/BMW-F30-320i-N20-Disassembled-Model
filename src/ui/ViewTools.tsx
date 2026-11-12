@@ -19,6 +19,8 @@ export function ViewTools({ data }: { data: DataBundle }) {
   const sysVis = useAppStore(s => s.sysVis)
   const setSysVis = useAppStore(s => s.setSysVis)
   const isolate = useAppStore(s => s.isolate)
+  const stage = useAppStore(s => s.stage)
+  const setStage = useAppStore(s => s.setStage)
 
   const subs = useMemo(() => {
     const seen = new Set<string>()
@@ -56,6 +58,16 @@ export function ViewTools({ data }: { data: DataBundle }) {
           <input type="range" min={SECTION_RANGE[axis][0]} max={SECTION_RANGE[axis][1]} step={0.005} value={pos} onChange={e => setSection(axis, Number(e.target.value))} />
         </label>
       )}
+      <div className="row">
+        <span>{ui('stage', lang)}</span>
+        <div className="seg">
+          {(['workshop', 'studio'] as const).map(st => (
+            <button key={st} className={stage === st ? 'on' : ''} onClick={() => setStage(st)}>
+              {ui(st === 'workshop' ? 'stageWorkshop' : 'stageStudio', lang)}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="row"><span>{ui('systems', lang)}</span><button className="link" onClick={() => isolate(null, subs)}>{ui('showAll', lang)}</button></div>
       <ul className="sys-list">
         {subs.map(sub => {

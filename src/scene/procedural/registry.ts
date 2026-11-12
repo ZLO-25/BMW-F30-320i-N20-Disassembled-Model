@@ -125,15 +125,40 @@ export const mesh = (geo: THREE.BufferGeometry, m: THREE.Material, x = 0, y = 0,
 export const rbox = (d: Detail, w: number, h: number, depth: number, r = 0.008) =>
   new RoundedBoxGeometry(w, h, depth, d === 'low' ? 1 : d === 'mid' ? 2 : 3, Math.min(r, w / 2.1, h / 2.1, depth / 2.1))
 
+/**
+ * R1 倒角：真實的機械零件沒有刀口一樣的 90° 邊，車削件、鑄件的邊緣都有 0.5–2 mm 的倒角或圓角，
+ * 光線打到那一圈會亮起一條細線，眼睛就靠這條線判斷「這是實心的金屬」。
+ *
+ *   側面輪廓（繞 Y 軸旋轉成圓柱）          一般圓柱            有倒角
+ *        ┌──────┐                         ┌──────┐           ╭──────╮
+ *        │      │                         │      │           │      │
+ *        └──────┘                         └──────┘           ╰──────╯
+ *
+ * 輪廓點在倒角前後各多放一點，讓頂面、側面維持平的，只有倒角那一圈是圓滑過渡。
+ * 只在 high（桌機）用；mid / low 與很細的圓柱（螺絲、管子，半徑 < 8 mm）照舊用一般圓柱，面數不變。
+ */
+export const CHAMFER = { max: 0.0018, ratio: 0.18, minRadius: 0.008 }
+export function cylinderY(d: Detail, r: number, len: number, rTop = r): THREE.BufferGeometry {
+  const n = segs(d, 32, 16, 8)
+  const c = Math.min(CHAMFER.max, Math.min(r, rTop) * CHAMFER.ratio, len * CHAMFER.ratio)
+  if (d !== 'high' || Math.min(r, rTop) < CHAMFER.minRadius || c < 0.0004) return new THREE.CylinderGeometry(rTop, r, len, n)
+  const h = len / 2
+  const pts = [
+    [0, -h], [r - 2 * c, -h], [r - c, -h], [r, -h + c], [r, -h + 2 * c],
+    [rTop, h - 2 * c], [rTop, h - c], [rTop - c, h], [rTop - 2 * c, h], [0, h],
+  ].map(([x, y]) => new THREE.Vector2(x, y))
+  return new THREE.LatheGeometry(pts, n)
+}
+
 /** 沿 X 軸的圓柱（曲軸、凸輪軸、皮帶盤都是沿 X） */
 export const cylX = (d: Detail, r: number, len: number, rTop = r) => {
-  const g = new THREE.CylinderGeometry(rTop, r, len, segs(d, 32, 16, 8))
+  const g = cylinderY(d, r, len, rTop)
   g.rotateZ(Math.PI / 2)
   return g
 }
-export const cylY = (d: Detail, r: number, len: number, rTop = r) => new THREE.CylinderGeometry(rTop, r, len, segs(d, 32, 16, 8))
+export const cylY = (d: Detail, r: number, len: number, rTop = r) => cylinderY(d, r, len, rTop)
 export const cylZ = (d: Detail, r: number, len: number, rTop = r) => {
-  const g = new THREE.CylinderGeometry(rTop, r, len, segs(d, 32, 16, 8))
+  const g = cylinderY(d, r, len, rTop)
   g.rotateX(Math.PI / 2)
   return g
 }

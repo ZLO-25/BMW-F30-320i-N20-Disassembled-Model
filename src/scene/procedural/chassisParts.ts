@@ -243,7 +243,7 @@ registerProcedural('muffler_v1', (d) => {
   const g = grp()
   g.add(mesh(rbox(d, 0.45, 0.2, 0.9, 0.06), M.steel()))
   g.add(mesh(cylX(d, 0.03, 0.4), M.steel(), 0.4, 0, 0.3))                                 // 進口
-  for (const z of [-0.3, 0.3]) g.add(mesh(cylX(d, 0.035, 0.18), M.machinedAl(), -0.3, 0, z))  // 兩邊尾管
+  g.add(mesh(cylX(d, 0.035, 0.18), M.machinedAl(), -0.3, 0, -0.3))  // 單支尾管在左側（-Z，駕駛座側），依 ZL 實車車尾照片
   for (const z of [-0.2, 0.2]) g.add(mesh(cylY(d, 0.004, 0.12), M.rubber(), 0, 0.14, z))  // 吊耳
   return g
 })
