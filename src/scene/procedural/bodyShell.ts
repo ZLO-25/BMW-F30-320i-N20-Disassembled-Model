@@ -188,7 +188,7 @@ export function stations(d: Detail): number[] {
 /** 把指定零件那一塊的車皮做出來，依材質分成幾個 geometry（同材質共用頂點，法線才會平順） */
 export function buildSkin(d: Detail, region: Region): Map<Exclude<Skin, null>, THREE.BufferGeometry> {
   const xs = stations(d)
-  const sub = d === 'high' ? 4 : d === 'mid' ? 3 : 1
+  const sub = d === 'high' ? 4 : d === 'mid' ? 2 : 1
   const fine = xs.map(x => fineSection(x, sub))
   const secs = fine.map(f => f.pts)
   const segOf = fine[0].seg

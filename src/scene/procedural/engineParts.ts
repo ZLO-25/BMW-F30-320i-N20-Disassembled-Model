@@ -326,7 +326,7 @@ registerProcedural('valve_set_v1', (d) => {
       for (const dx of [-0.018, 0.018]) {
         v.add(mesh(cylY(d, 0.0028, 0.085), M.steel(), x + dx, -0.005, z))
         v.add(mesh(cylY(d, rHead, 0.003, rHead * 0.7), M.steel(), x + dx, -0.048, z))
-        v.add(mesh(cylY(d, 0.007, 0.004), M.darkSteel(), x + dx, 0.035, z))
+        v.add(mesh(cylY(d, 0.007, 0.004), d === 'high' ? M.darkSteel() : M.steel(), x + dx, 0.035, z))
         g.add(mesh(springGeo, M.steel(), x + dx, 0.02, z))
       }
       g.add(v)
@@ -647,8 +647,11 @@ registerProcedural('piston_rod_set_v1', (d) => {
     const piston = new THREE.Group()
     piston.name = `piston_${i}`
     piston.add(mesh(cylY(d, 0.0405, 0.05), M.machinedAl(), 0, 0.01, 0))
-    piston.add(mesh(cylY(d, 0.03, 0.004), mat(0x9a9da2, { metalness: 0.8, roughness: 0.5 }), 0, 0.0355, 0))
-    for (const dy of [0.022, 0.016, 0.01]) piston.add(mesh(new THREE.TorusGeometry(0.0405, 0.0012, 4, segs(d, 32, 16, 8)), M.darkSteel(), 0, dy, 0, Math.PI / 2, 0, 0))
+    // 活塞頂與活塞環另外上材質只在 high（每多一種材質手機就多一個 draw call，四缸 × 會動 = 不能合併）
+    if (d === 'high') {
+      piston.add(mesh(cylY(d, 0.03, 0.004), mat(0x9a9da2, { metalness: 0.8, roughness: 0.5 }), 0, 0.0355, 0))
+      for (const dy of [0.022, 0.016, 0.01]) piston.add(mesh(new THREE.TorusGeometry(0.0405, 0.0012, 4, segs(d, 32, 16, 8)), M.darkSteel(), 0, dy, 0, Math.PI / 2, 0, 0))
+    }
     piston.position.copy(top)
     g.add(piston)
     // 連桿：群組原點在曲柄銷
