@@ -5,7 +5,7 @@ import { unitOf } from '../core/disassembly'
 import { useAppStore } from '../store/useAppStore'
 import { ConfidenceBadge, ConfidenceLegend } from './ConfidenceBadge'
 
-function SourceLink({ id, data, lang }: { id: string | null; data: DataBundle; lang: Lang }) {
+export function SourceLink({ id, data, lang }: { id: string | null; data: DataBundle; lang: Lang }) {
   if (!id) return null
   const s = data.sources.get(id)
   if (!s) return <span className="src">{ui('source', lang)}: {id}</span>

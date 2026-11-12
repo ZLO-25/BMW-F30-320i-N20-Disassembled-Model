@@ -12,6 +12,7 @@ import { ViewTools } from './ViewTools'
 import { VariantModal } from './VariantModal'
 import { AnimPanel } from './AnimPanel'
 import { MistakeModal } from './MistakeModal'
+import { BoltDialog } from './BoltDialog'
 import { ErrorBoundary, webglSupported } from './ErrorBoundary'
 
 // 審查 S3：點到才載入的面板（對照模式有第二個 Canvas；學習與保養帶著題庫與情境資料）
@@ -136,6 +137,7 @@ function AppBody() {
       <VariantModal />
       <Suspense fallback={null}><CompareView data={data} /></Suspense>
       <MistakeModal data={data} />
+      <BoltDialog data={data} />
     </div>
   )
 }
