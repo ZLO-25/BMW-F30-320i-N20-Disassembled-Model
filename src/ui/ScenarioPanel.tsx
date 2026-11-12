@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import type { DataBundle } from '../core/loadData'
+import type { FullData } from '../core/loadData'
 import { t, ui, fmt, partName } from '../core/i18n'
 import { useAppStore } from '../store/useAppStore'
 import { worldPosition } from '../core/partGraph'
@@ -14,7 +14,7 @@ const PHASES = ['scnPhaseAsk', 'scnPhaseCause', 'scnPhaseRemove', 'scnPhaseRepla
  *   問診（選擇題，可重答）─► 判斷原因 ─► 拆到要換的零件（有「下一個拆誰」提示）
  *       ─► 按「裝上新零件」─► 托盤全部裝回 ─► 成績（第一次就答對的比例）
  */
-export function ScenarioPanel({ data }: { data: DataBundle }) {
+export function ScenarioPanel({ data }: { data: FullData }) {
   const lang = useAppStore(s => s.lang)
   const st = useAppStore(s => s.scenario)!
   const patch = useAppStore(s => s.patchScenario)

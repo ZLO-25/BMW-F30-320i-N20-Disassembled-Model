@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import type { DataBundle } from '../core/loadData'
+import type { DataBundle, FullData } from '../core/loadData'
+import { useFullData } from './useFullData'
 import { t, ui, fmt, partName } from '../core/i18n'
 import { useAppStore } from '../store/useAppStore'
 import { worldPosition } from '../core/partGraph'
@@ -11,6 +12,13 @@ import type { Interval, Maintenance } from '../core/schema'
  * 可以一鍵在 3D 對準零件，或直接開導覽。
  */
 export function MaintenancePanel({ data }: { data: DataBundle }) {
+  const lang = useAppStore(s => s.lang)
+  const full = useFullData(data)
+  if (!full) return <p className="muted">{ui('loading', lang)}</p>
+  return <MaintenanceBody data={full} />
+}
+
+function MaintenanceBody({ data }: { data: FullData }) {
   const lang = useAppStore(s => s.lang)
   const variant = useAppStore(s => s.variant)
   const [open, setOpen] = useState<string | null>(null)

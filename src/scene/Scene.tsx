@@ -1,19 +1,21 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import * as THREE from 'three'
-import { EffectComposer, N8AO, ToneMapping, Bloom } from '@react-three/postprocessing'
-import { ToneMappingMode } from 'postprocessing'
 import type { DataBundle } from '../core/loadData'
 import { useAppStore } from '../store/useAppStore'
 import { PartNode, PartRegistryCtx, ghostTuning } from './PartNode'
 import { AnimationDriver } from './AnimationDriver'
 import { PerfStats, statsEnabled, benchEnabled } from './PerfStats'
 import { Bench } from './Bench'
+import { bootSet, bootDone } from '../boot'
 import { redraw, tickRedraw } from './redraw'
 import { WorkshopEnvironment, StageFloor, SoftContactShadows, WorkLight, PaintSync, STUDIO_COLORS } from './Stage'
-import { Governor, profileFor, type QualityProfile } from '../core/quality'
+import { Governor, profileFor } from '../core/quality'
+
+/** E3：後處理（N8AO、postprocessing 約 100 KB gzip）延遲載入；L0／L1 完全用不到就不下載。分包規則見 vite.config.ts */
+const PostFX = lazy(() => import('./PostFX').then(m => ({ default: m.PostFX })))
 
 const CAMERA_POS = new THREE.Vector3(2.7, 1.5, 2.3)
 const TARGET = new THREE.Vector3(1.15, 0.55, 0)
@@ -53,20 +55,6 @@ function CameraReset({ controls }: { controls: React.RefObject<OrbitControlsImpl
 const AO_FORCED_OFF = new URLSearchParams(location.search).get('ao') === '0'
 
 const GHOST_SCALE_AO = 0.3
-
-/** 後處理：AO / Bloom / 抗鋸齒取樣數都由畫質設定檔（core/quality.ts）決定 */
-function PostFX({ profile }: { profile: QualityProfile }) {
-  const full = profile.ao === 'full'
-  return (
-    <EffectComposer multisampling={profile.msaa}>
-      {/* 半徑單位是公尺：0.15 m ≈ 零件之間的縫隙、螺栓座、凹槽這種尺度 */}
-      <N8AO aoRadius={0.15} distanceFalloff={0.6} intensity={full ? 3 : 2.5} quality={full ? 'medium' : 'low'} halfRes={!full} />
-      {/* R1：只有真的很亮的地方（燈管在鍍鉻、車漆上的反光）才會微微泛光，像相機拍到的那樣；只在 L5 */}
-      {profile.bloom ? <Bloom luminanceThreshold={1.1} luminanceSmoothing={0.3} intensity={0.35} mipmapBlur radius={0.55} /> : null}
-      <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
-    </EffectComposer>
-  )
-}
 
 /**
  * E2 自動降級：量「連續在畫」期間的每格時間，連續兩個 1 秒窗口的中位數都高於 28 ms 就降一級。
@@ -141,10 +129,43 @@ function RedrawDriver({ shadows }: { shadows: boolean }) {
   return null
 }
 
+/**
+ * E3 開機：場景掛載後先用 compileAsync 把著色器編好（支援平行編譯的瀏覽器上不會卡住主執行緒，載入畫面的動畫還在動），
+ * 編完才開始畫第一格（Canvas 在這之前是 frameloop="never"）。第一格畫出來就收掉載入畫面。
+ * 不支援的瀏覽器上 compileAsync 會退回同步編譯，效果和以前一樣，不會更差。
+ */
+function BootGate({ onReady }: { onReady: () => void }) {
+  const { gl, scene, camera } = useThree()
+  useEffect(() => {
+    bootSet(66, '組裝零件、編譯著色器… / Building parts, compiling shaders…')
+    let alive = true
+    const id = setTimeout(async () => {   // 等一個 tick，讓零件的 primitive 都掛上 scene
+      try { await gl.compileAsync(scene, camera) } catch { /* 編譯失敗就讓第一次繪製去報錯 */ }
+      if (alive) onReady()
+    }, 0)
+    return () => { alive = false; clearTimeout(id) }
+  }, [gl, scene, camera, onReady])
+  return null
+}
+
+/** 第一格真的畫出來之後收掉載入畫面 */
+function FirstFrame() {
+  const done = useRef(false)
+  useFrame(() => {
+    if (done.current) return
+    done.current = true
+    bootSet(100, '完成 / Ready')
+    bootDone()
+  }, -800)
+  return null
+}
+
 export function Scene({ data }: { data: DataBundle }) {
   const controls = useRef<OrbitControlsImpl>(null)
   const registry = useMemo(() => new Map<string, THREE.Object3D>(), [])
   const select = useAppStore(s => s.select)
+  const [ready, setReady] = useState(false)
+  const onReady = useCallback(() => { setReady(true); redraw() }, [])
   const level = useAppStore(s => s.qualityLevel)
   const qmode = useAppStore(s => s.qualityMode)
   const mobileDevice = useAppStore(s => s.mobile)
@@ -164,12 +185,14 @@ export function Scene({ data }: { data: DataBundle }) {
   return (
     <Canvas
       key={profile.nativeAA ? 'aa' : 'plain'}   // 原生抗鋸齒在建立繪圖環境時決定，只有 L2 ↔ 其他級之間切換才需要重建畫布
-      frameloop="demand"
+      frameloop={ready ? 'demand' : 'never'}
       dpr={dpr}
       shadows={shadows}
       camera={{ position: CAMERA_POS.toArray(), fov: 42, near: 0.05, far: 100 }}
       onPointerMissed={() => select(null)}
       gl={{ antialias: profile.nativeAA, powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}>
+      <BootGate onReady={onReady} />
+      <FirstFrame />
       <InvalidateOnStore />
       <RedrawDriver shadows={shadows} />
       <QualityGovernor />
@@ -191,7 +214,7 @@ export function Scene({ data }: { data: DataBundle }) {
         minDistance={0.25} maxDistance={12} maxPolarAngle={Math.PI * 0.78} />
       <CameraReset controls={controls} />
       <SectionPlane />
-      {ao && <PostFX profile={profile} />}
+      {ao && <Suspense fallback={null}><PostFX profile={profile} /></Suspense>}
       {statsEnabled() && <PerfStats />}
       {benchEnabled() && <Bench detail={detail} />}
     </Canvas>

@@ -7,8 +7,31 @@
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="description" content="BMW F30 320i（N20）互動式 3D 拆解教學模擬器：零件、拆裝順序、保養與故障診斷練習。Interactive teardown simulator for the BMW F30 320i (N20)." />
     <title>F30 320i（N20）互動式拆解教學 / N20 Teardown Simulator</title>
+    <!-- E3：載入畫面（純 HTML + 行內 CSS，JS 還沒到就看得到）。進度由 src/boot.ts 推：HTML 到 10% → 程式執行 33% → 零件組裝 66% → 第一格畫出來 100% 並淡出 -->
+    <style>
+      html, body { margin: 0; background: #14161a; }
+      #boot { position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+        background: #14161a; color: #dfe3ea; font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', 'Noto Sans TC', sans-serif; transition: opacity .35s; }
+      #boot.out { opacity: 0; pointer-events: none; }
+      #boot b { font-size: 18px; letter-spacing: .02em; }
+      #boot small { opacity: .65; }
+      #boot .bar { width: min(280px, 70vw); height: 6px; border-radius: 3px; background: #2a2e36; overflow: hidden; margin-top: 6px; }
+      #boot .bar i { display: block; height: 100%; width: 10%; background: #4fc3f7; border-radius: 3px; transition: width .4s ease; }
+    </style>
   </head>
   <body>
+    <div id="boot" role="status" aria-live="polite">
+      <b>BMW F30 320i（N20）</b>
+      <small>互動式拆解教學 / Teardown Simulator</small>
+      <div class="bar"><i id="boot-fill"></i></div>
+      <small id="boot-text">載入中 / Loading…</small>
+    </div>
+    <script>
+      window.__boot = {
+        set: function (p, t) { var f = document.getElementById('boot-fill'), x = document.getElementById('boot-text'); if (f) f.style.width = p + '%'; if (x && t) x.textContent = t },
+        done: function () { var b = document.getElementById('boot'); if (!b) return; b.className = 'out'; setTimeout(function () { b.remove() }, 500) }
+      }
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
