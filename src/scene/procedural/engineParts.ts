@@ -6,18 +6,14 @@
  */
 import * as THREE from 'three'
 import {
-  registerProcedural, segs, mat, COLORS, M, at, mesh, rbox, cylX, cylY, cylZ, tube, beltLoop, sprocket, openTray,
+  registerProcedural, getProcedural, segs, mat, COLORS, M, at, mesh, rbox, cylX, cylY, cylZ, tube, beltLoop, sprocket, openTray,
   hexHead, hoseClamp, type Detail,
 } from './registry'
 
-const PITCH = 0.091
-export const CYL_X = [-1.5, -0.5, 0.5, 1.5].map(i => i * PITCH)      // 四缸中心（1 缸在前 +X 還是後，這裡不區分）
+import { CYL_X, CRANK_Y, STROKE_R, ROD_L, CRANK_ANGLE } from './engineGeom'
+export { CYL_X }
 const BEARING_X = [-0.182, -0.091, 0, 0.091, 0.182]                    // 五道主軸承
 const BORE_R = 0.042
-const CRANK_Y = -0.09
-const STROKE_R = 0.045                                                 // 行程 90.1mm 的一半
-const ROD_L = 0.19                                                     // 示意
-const CRANK_ANGLE = [0, Math.PI, Math.PI, 0]                           // 1、4 缸在上死點；2、3 在下死點
 const HEAD_Y = 0.183
 const CAM_Y = 0.115                                                    // 缸頭座標
 const CAM_Z = 0.055
@@ -322,12 +318,20 @@ registerProcedural('valve_set_v1', (d) => {
     return tube(d, pts, 0.0012)
   }
   const springGeo = d === 'low' ? cylY(d, 0.009, 0.028) : helix(0.0085, 0.028, 6)
-  for (const x of CYL_X) for (const dx of [-0.018, 0.018]) for (const [z, rHead] of [[-0.035, 0.014], [0.035, 0.012]] as const) {
-    g.add(mesh(cylY(d, 0.0028, 0.085), M.steel(), x + dx, -0.005, z))
-    g.add(mesh(cylY(d, rHead, 0.003, rHead * 0.7), M.steel(), x + dx, -0.048, z))
-    g.add(mesh(springGeo, M.steel(), x + dx, 0.02, z))
-    g.add(mesh(cylY(d, 0.007, 0.004), M.darkSteel(), x + dx, 0.035, z))
-  }
+  // R4：每缸的進氣門（vi_i，-Z 側）與排氣門（ve_i，+Z 側）各成一組，運轉動畫把它們往下推開
+  CYL_X.forEach((x, i) => {
+    for (const [side, z, rHead] of [['vi', -0.035, 0.014], ['ve', 0.035, 0.012]] as const) {
+      const v = new THREE.Group()
+      v.name = `${side}_${i}`
+      for (const dx of [-0.018, 0.018]) {
+        v.add(mesh(cylY(d, 0.0028, 0.085), M.steel(), x + dx, -0.005, z))
+        v.add(mesh(cylY(d, rHead, 0.003, rHead * 0.7), M.steel(), x + dx, -0.048, z))
+        v.add(mesh(cylY(d, 0.007, 0.004), M.darkSteel(), x + dx, 0.035, z))
+        g.add(mesh(springGeo, M.steel(), x + dx, 0.02, z))
+      }
+      g.add(v)
+    }
+  })
   return g
 })
 
@@ -633,17 +637,23 @@ registerProcedural('crankshaft_v1', (d) => {
 })
 
 registerProcedural('piston_rod_set_v1', (d) => {
+  // R4：每缸的活塞（piston_i）與連桿（rod_i）是有名字的節點，運轉動畫才能各自動
   const g = new THREE.Group()
   CYL_X.forEach((x, i) => {
     const a = CRANK_ANGLE[i]
     const pin = new THREE.Vector3(x, CRANK_Y + Math.cos(a) * STROKE_R, Math.sin(a) * STROKE_R)
     const top = new THREE.Vector3(x, pin.y + ROD_L, 0)
-    // 活塞
-    g.add(mesh(cylY(d, 0.0405, 0.05), M.machinedAl(), x, top.y + 0.01, 0))
-    g.add(mesh(cylY(d, 0.03, 0.004), mat(0x9a9da2, { metalness: 0.8, roughness: 0.5 }), x, top.y + 0.0355, 0))
-    for (const dy of [0.022, 0.016, 0.01]) g.add(mesh(new THREE.TorusGeometry(0.0405, 0.0012, 4, segs(d, 32, 16, 8)), M.darkSteel(), x, top.y + dy, 0, Math.PI / 2, 0, 0))
-    // 連桿
+    // 活塞：群組原點在活塞銷
+    const piston = new THREE.Group()
+    piston.name = `piston_${i}`
+    piston.add(mesh(cylY(d, 0.0405, 0.05), M.machinedAl(), 0, 0.01, 0))
+    piston.add(mesh(cylY(d, 0.03, 0.004), mat(0x9a9da2, { metalness: 0.8, roughness: 0.5 }), 0, 0.0355, 0))
+    for (const dy of [0.022, 0.016, 0.01]) piston.add(mesh(new THREE.TorusGeometry(0.0405, 0.0012, 4, segs(d, 32, 16, 8)), M.darkSteel(), 0, dy, 0, Math.PI / 2, 0, 0))
+    piston.position.copy(top)
+    g.add(piston)
+    // 連桿：群組原點在曲柄銷
     const rod = new THREE.Group()
+    rod.name = `rod_${i}`
     const len = pin.distanceTo(top)
     rod.add(mesh(rbox(d, 0.014, len - 0.04, 0.02, 0.004), M.forged(), 0, len / 2, 0))
     rod.add(mesh(cylX(d, 0.03, 0.02), M.forged(), 0, 0, 0))
@@ -667,9 +677,14 @@ registerProcedural('main_caps_v1', (d) => {
 registerProcedural('balance_shafts_v1', (d) => {
   const g = new THREE.Group()
   g.add(mesh(rbox(d, 0.3, 0.02, 0.15, 0.006), M.castAl(), 0, 0.02, 0))
-  for (const z of [-0.05, 0.05]) {
-    g.add(mesh(cylX(d, 0.01, 0.3), M.steel(), 0, 0, z))
-    for (const x of [-0.08, 0.08]) g.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.06, segs(d, 24, 12, 8), 1, false, 0, Math.PI).rotateZ(Math.PI / 2), M.forged(), x, 0, z))
+  for (const [i, z] of [[0, -0.05], [1, 0.05]]) {
+    // R4：兩支平衡軸各自是有名字的節點（bal_0 / bal_1），以兩倍曲軸轉速反向旋轉
+    const shaft = new THREE.Group()
+    shaft.name = `bal_${i}`
+    shaft.add(mesh(cylX(d, 0.01, 0.3), M.steel()))
+    for (const x of [-0.08, 0.08]) shaft.add(mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.06, segs(d, 24, 12, 8), 1, false, 0, Math.PI).rotateZ(Math.PI / 2), M.forged(), x, 0, 0))
+    shaft.position.z = z
+    g.add(shaft)
   }
   return g
 })
@@ -892,3 +907,17 @@ registerProcedural('oil_cooler_v1', (d) => {
 
 // 讓 tsc 不抱怨沒用到
 void COLORS; void at
+
+/**
+ * R4：引擎的「外殼」零件（缸體、缸頭、氣門室蓋、油底殼、進排氣歧管…）標成 shell，
+ * 播放任何運轉動畫時會自動半透明，才看得到裡面的活塞、曲軸、凸輪軸。
+ */
+for (const name of ['engine_block_v2', 'head_gasket_v1', 'cylinder_head_v2', 'valve_cover_v2', 'engine_cover_v2', 'cam_caps_v1', 'oil_pan_v2', 'intake_manifold_v2', 'turbo_v2', 'heat_shield_v1', 'main_caps_v1', 'coil_set_v2']) {
+  const gen = getProcedural(name)
+  if (!gen) continue
+  registerProcedural(name, (d) => {
+    const o = gen(d)
+    o.traverse(c => { if ((c as THREE.Mesh).isMesh) c.userData.shell = true })
+    return o
+  })
+}

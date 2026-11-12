@@ -296,6 +296,7 @@ function skinGroup(d: Detail, region: Region, origin: [number, number, number]) 
     geo.translate(-origin[0], -origin[1], -origin[2])
     const m = new THREE.Mesh(geo, skinMat(s))
     m.name = region === 'shell' && s === 'paint' ? 'bodyShellMain' : ''
+    m.userData.shell = true   // 播放運轉動畫時車皮自動半透明
     g.add(m)
   }
   return g

@@ -60,6 +60,9 @@ interface AppState {
   animT: number
   gear: string
   animPlaying: boolean
+  /** R4 引擎運轉：慢動作（預設開，看得清楚活塞與氣門） */
+  engineSlow: boolean
+  setEngineSlow: (v: boolean) => void
   /** 鏡頭對準：改 token 讓 Scene 把鏡頭移到 target */
   focus: { target: [number, number, number]; dist: number; token: number } | null
   selectedId: string | null
@@ -177,6 +180,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   animT: 0,
   gear: '1',
   animPlaying: false,
+  engineSlow: true,
+  setEngineSlow: (engineSlow) => set({ engineSlow }),
   focus: null,
   selectedId: null,
   hoveredId: null,

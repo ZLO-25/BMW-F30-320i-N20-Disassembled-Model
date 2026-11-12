@@ -332,3 +332,8 @@ p.verdict { margin: 0; }
 .fatal { max-width: 640px; margin: 10vh auto; padding: 24px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
 .fatal pre { white-space: pre-wrap; font-size: 12px; opacity: 0.8; }
 .nowebgl { height: 100%; display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; opacity: 0.85; }
+
+/* R4 引擎運轉：行程表顏色和 3D 裡的發光一致 */
+.stroke-table .stroke-power td { color: #ff8a3d; font-weight: 600; }
+.stroke-table .stroke-intake td { color: #6aa8ff; }
+.engine-run .row label { display: inline-flex; gap: 4px; align-items: center; margin-right: 12px; }

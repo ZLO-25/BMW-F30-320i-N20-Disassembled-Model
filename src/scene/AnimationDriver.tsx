@@ -28,7 +28,7 @@ export function AnimationDriver() {
       if (t >= 1) { t = 1; dir.current = -1 } else if (t <= 0) { t = 0; dir.current = 1 }
       if (Math.abs(t - lastSet.current) > 0.01) { lastSet.current = t; s.setAnimT(t) }
     }
-    def.apply({ get: id => registry.get(id), t, gear: s.gear, time: performance.now() / 1000 - t0.current, variant: s.variant })
+    def.apply({ get: id => registry.get(id), t, gear: s.gear, time: performance.now() / 1000 - t0.current, variant: s.variant, dt: Math.min(dt, 0.1), playing: s.animPlaying, slow: s.engineSlow })
   })
   return null
 }
