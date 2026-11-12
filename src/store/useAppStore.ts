@@ -11,6 +11,8 @@ export type BodyMode = 'solid' | 'xray' | 'hidden'
 export type DrawerTab = 'tree' | 'info' | 'tray' | 'anim' | 'learn' | 'maint'
 export type Mode = 'inspect' | 'teardown'
 export type SysVis = 'show' | 'ghost' | 'hide'
+/** R1：場景背景。workshop = 修車廠（水泥地、日光燈反射）；studio = 原本的深色格線 */
+export type Stage = 'workshop' | 'studio'
 export type SectionAxis = 'off' | 'x' | 'z'
 
 /** 被擋住時的提示：要先拆（remove）或要先裝回（install）哪些零件 */
@@ -81,6 +83,7 @@ interface AppState {
   sectionPos: number
   sysVis: Record<string, SysVis>
   toolsOpen: boolean
+  stage: Stage
 
   // ── P5 ──
   progress: Progress
@@ -128,6 +131,7 @@ interface AppState {
   setSysVis: (sub: string, v: SysVis) => void
   isolate: (sub: string | null, all: string[]) => void
   setToolsOpen: (o: boolean) => void
+  setStage: (s: Stage) => void
 
   // ── P5 ──
   setProgress: (p: Progress) => void
@@ -192,6 +196,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   sectionPos: 0,
   sysVis: {},
   toolsOpen: false,
+  stage: safeGet('n20.stage.v1') === 'studio' ? 'studio' : 'workshop',
 
   progress: loadProgress(),
   toolsInHand: new Set(),
@@ -315,6 +320,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     return { sysVis }
   }),
   setToolsOpen: (toolsOpen) => set({ toolsOpen }),
+  setStage: (stage) => { safeSet('n20.stage.v1', stage); set({ stage }) },
 
   // ── P5 ──
   setProgress: (progress) => { saveProgress(progress); set({ progress }) },

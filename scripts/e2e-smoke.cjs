@@ -39,7 +39,8 @@ async function main() {
     page.on('response', r => { if (r.status() >= 400) errors.push(`http ${r.status()}: ${r.url()}`) })
     await page.goto(URL, { waitUntil: 'load' })
     await page.waitForFunction(() => window.__n20perf, null, { timeout: 90000 })
-    await page.waitForTimeout(2000)
+    // R1：接觸陰影在畫面靜止 0.65 秒後才重畫 2 格；軟體繪圖一秒才 1–2 格，要多等一下才是「靜止時」的數字
+    await page.waitForTimeout(6000)
     const read = () => page.evaluate(() => window.__n20perf)
     const p0 = await read()
     console.log('initial', p0)
@@ -50,7 +51,7 @@ async function main() {
       await page.click(`.seg button:has-text("${i % 2 === 0 ? '手排' : '自排'}")`)
       await page.waitForTimeout(1200)
     }
-    await page.waitForTimeout(1500)
+    await page.waitForTimeout(6000)
     const p1 = await read()
     console.log('after 4 variant switches', p1)
     if (p1.geometries > p0.geometries * 1.3 + 20) fails.push(`geometry leak: ${p0.geometries} → ${p1.geometries}`)

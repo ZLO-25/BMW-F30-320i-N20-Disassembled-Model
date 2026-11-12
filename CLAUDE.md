@@ -71,7 +71,7 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 - 拆裝規則：`src/core/disassembly.ts`（純 TS，有 Vitest）。新增零件後一定要跑 `npm test`，裡面會檢查「拆到曲軸再裝回」不會卡住。
 - 零件位置要和 `src/scene/procedural/engineParts.ts` 的座標註解一致。
 - 材質一律用 `registry.ts` 的 `M.*` 預設（PBR），不要每個零件自己調金屬度。
-- 環境光用 three 內建 RoomEnvironment（不連網），不要改回 drei `<Environment preset>`。
+- 環境光用 `src/scene/workshop.ts` 的程式化「修車廠」房間（R1，不連網、不用圖檔），不要改回 drei `<Environment preset>`（會連外網抓 HDR）。
 
 ## P3 之後
 - 變速箱變體：零件用 `transmissionVariant`，相依用 `removal.requiresVariant`；載入一律走 `buildGraph(parts, variant)`，UI 不要自己過濾。
@@ -137,5 +137,12 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 - 透視時 `PartNode.applyGhostSpecular` 會把材質改成霧面（關 clearcoat／金屬度／環境反射），切回實體還原；新增會透視的材質不用自己處理。
 - **不要把 drei / three-stdlib 另外分 chunk**：和 `@react-three/postprocessing` 循環載入會讓整頁白掉（forwardRef undefined）。`npm run e2e` 會抓到。
 - `?stats=1` 另外提供 `window.__n20cam(px,py,pz,tx,ty,tz)` 給自動截圖擺鏡頭。
-- 還沒查證、等 ZL 用實車確認：機油加注蓋左右側、320i 尾管數。
+- ZL 實車照片（`sources.json` 的 `zl_owner_photos_2026`）確認：**機油加注蓋在氣門室蓋前端右側（排氣側）**、**320i 單支尾管在左**。照片含車牌，不放進 repo。
 
+
+## R1 之後（光與環境，2026-11-12）
+- 場景舞台在 `src/scene/Stage.tsx`：`WorkshopEnvironment`（反射 + 背景）、`StageFloor`（水泥地 / 格線）、`SoftContactShadows`、`WorkLight`。修車廠房間與水泥地貼圖在 `workshop.ts`（純 three，有測試）。
+- 背景模式 `stage`：`workshop`（預設）/ `studio`（原本的深色格線），檢視工具裡切換，存在 localStorage `n20.stage.v1`。簡潔模式的顏色補償在 `STUDIO_COLORS`。
+- 接觸陰影不是每格更新：store 的拆裝、爆炸、顯示、車殼模式、變體改變後才重畫 45 格。新增會改變外形的 store 欄位時，加進 `SoftContactShadows` 的相依清單。
+- 工作燈跟著鏡頭，距離 target < 2.4 m 才亮；Bloom 只在 high。
+- `cylX/cylY/cylZ` 在 high 會產生有倒角的圓柱（`cylinderY`，半徑 ≥ 8 mm）；外形範圍不變，mid / low 照舊。要刀口邊的特殊零件直接用 `new THREE.CylinderGeometry`。
