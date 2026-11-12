@@ -113,7 +113,12 @@ maintenance/*.json  保養項目，引用 procedure（一鍵跳到 3D 導覽）
   "commonIssues": [{ "zh": "...", "en": "..." }],
   "transmissionVariant": "both",       // both / manual / auto
   "animations": [],                    // 保留；P3 實作時動畫改寫在 src/scene/animations.ts（用零件 id 找模型），資料不用填
-  "tags": []                           // 🆕 搜尋用關鍵字
+  "tags": [],                          // 🆕 搜尋用關鍵字
+  "positionApproximate": true,         // 位置是否只是示意（預設 true）
+  "shape": {                           // 🆕 R2：外形的依據，預設 { "basis": "schematic", "source": null }
+    "basis": "photo",                  //    schematic（示意）/ photo（照實車照片描）/ scan（掃描）/ cad（官方圖面）
+    "source": "zl_owner_photos_2026"   //    非 schematic 一定要填，validate 會擋；資訊卡會顯示「外形依據」
+  }
 }
 ```
 

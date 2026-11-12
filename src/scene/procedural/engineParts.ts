@@ -7,7 +7,7 @@
 import * as THREE from 'three'
 import {
   registerProcedural, segs, mat, COLORS, M, at, mesh, rbox, cylX, cylY, cylZ, tube, beltLoop, sprocket, openTray,
-  type Detail,
+  hexHead, hoseClamp, type Detail,
 } from './registry'
 
 const PITCH = 0.091
@@ -110,7 +110,8 @@ registerProcedural('valve_cover_v2', (d) => {
   g.add(mesh(cylY(d, 0.022, 0.02), p(), -0.2, 0.095, -0.1))
   g.add(mesh(cylZ(d, 0.011, 0.05), p(), -0.05, 0.08, -0.14))
   // 周圍螺絲
-  for (const x of [-0.27, -0.13, 0, 0.13, 0.27]) for (const z of [-0.14, 0.14]) g.add(mesh(cylY(d, 0.006, 0.008), M.steel(), x, 0.054, z))
+  // R2：周圍的六角法蘭螺絲（M6，對邊 10 mm）
+  for (const x of [-0.27, -0.13, 0, 0.13, 0.27]) for (const z of [-0.14, 0.14]) g.add(mesh(hexHead(d, 0.010, 0.006), M.steel(), x, 0.05, z))
   return g
 })
 
@@ -125,6 +126,58 @@ registerProcedural('engine_cover_v1', (d) => {
   return g
 })
 
+/**
+ * R2 引擎飾蓋（依 ZL 實車引擎室照片描繪外形）：
+ *   - 四邊圓角的大面板，右前角（+X、+Z）挖一個缺口讓機油加注蓋露出來
+ *   - 中間凸起的上層、右後方三道斜紋、左側一條長的字樣凸條（實車是 BMW / TwinPower Turbo 字樣，這裡不放商標文字）
+ *   - 前方中間一個圓形徽章座（不放廠徽）
+ * 座標：原點在氣門室蓋上方，+X 車頭，+Z 右側（排氣側）。
+ */
+registerProcedural('engine_cover_v2', (d) => {
+  const g = new THREE.Group()
+  const W = 0.5, D = 0.27, R = 0.035
+  const notch = { x: 0.2, z: 0.09, r: 0.034 }   // 和 eng.head.oil_filler_cap 的位置一致
+  // 外形畫在 (X, -Z) 平面，擠出後轉成水平
+  const s = new THREE.Shape()
+  const x0 = -W / 2, x1 = W / 2, y0 = -D / 2, y1 = D / 2
+  s.moveTo(x0 + R, y0)
+  s.lineTo(notch.x - notch.r - 0.01, y0)
+  // 右前角（shape 的 y = -z，所以 z = +0.09 在 y = -0.09）：沿缺口的圓弧繞過去
+  s.absarc(notch.x, -notch.z, notch.r + 0.006, Math.PI, Math.PI * 0.5 - 0.6, true)
+  s.lineTo(x1, -notch.z + notch.r * 0.4)
+  s.lineTo(x1, y1 - R)
+  s.quadraticCurveTo(x1, y1, x1 - R, y1)
+  s.lineTo(x0 + R, y1)
+  s.quadraticCurveTo(x0, y1, x0, y1 - R)
+  s.lineTo(x0, y0 + R)
+  s.quadraticCurveTo(x0, y0, x0 + R, y0)
+  const curve = segs(d, 16, 8, 4)
+  const base = new THREE.ExtrudeGeometry(s, { depth: 0.014, bevelEnabled: d !== 'low', bevelThickness: 0.004, bevelSize: 0.004, bevelSegments: segs(d, 3, 2, 1), curveSegments: curve })
+  base.rotateX(-Math.PI / 2)
+  g.add(mesh(base, M.blackPlastic(), 0, -0.008, 0))
+  // 上層凸起：較小的圓角板
+  const top = new THREE.Shape()
+  const tw = 0.36, td = 0.17, tr = 0.03
+  top.moveTo(-tw / 2 + tr, -td / 2); top.lineTo(tw / 2 - tr, -td / 2); top.quadraticCurveTo(tw / 2, -td / 2, tw / 2, -td / 2 + tr)
+  top.lineTo(tw / 2, td / 2 - tr); top.quadraticCurveTo(tw / 2, td / 2, tw / 2 - tr, td / 2); top.lineTo(-tw / 2 + tr, td / 2)
+  top.quadraticCurveTo(-tw / 2, td / 2, -tw / 2, td / 2 - tr); top.lineTo(-tw / 2, -td / 2 + tr); top.quadraticCurveTo(-tw / 2, -td / 2, -tw / 2 + tr, -td / 2)
+  const tg = new THREE.ExtrudeGeometry(top, { depth: 0.012, bevelEnabled: d !== 'low', bevelThickness: 0.005, bevelSize: 0.005, bevelSegments: segs(d, 3, 2, 1), curveSegments: curve })
+  tg.rotateX(-Math.PI / 2)
+  g.add(mesh(tg, M.glossPlastic(), -0.03, 0.01, 0.01))
+  // 左側（-Z）長條字樣凸條
+  g.add(mesh(rbox(d, 0.22, 0.004, 0.022, 0.002), M.machinedAl(), -0.04, 0.0285, -0.05))
+  // 右後方三道斜紋
+  for (let i = 0; i < 3; i++) {
+    const rib = mesh(rbox(d, 0.07, 0.005, 0.006, 0.0025), M.glossPlastic(), -0.13 + i * 0.022, 0.0275, 0.055)
+    rib.rotation.y = 0.55
+    g.add(rib)
+  }
+  // 前方中間的圓形徽章座（不放廠徽）
+  g.add(mesh(cylY(d, 0.026, 0.006), M.machinedAl(), 0.1, 0.027, 0.01))
+  g.add(mesh(cylY(d, 0.021, 0.007), M.glossPlastic(), 0.1, 0.028, 0.01))
+  return g
+})
+
 registerProcedural('coil_set_v2', (d) => {
   const g = new THREE.Group()
   for (const x of CYL_X) {
@@ -136,6 +189,15 @@ registerProcedural('coil_set_v2', (d) => {
     c.add(mesh(cylY(d, 0.005, 0.008), M.steel(), 0.012, 0.028, -0.014))
     c.position.x = x
     g.add(c)
+  }
+  // R2：線束。四個考爾插頭接到同一條波紋管線束，往後方（-X）走出去接 DME
+  const loomZ = 0.072, loomY = 0.02
+  g.add(mesh(tube(d, [[CYL_X[3] + 0.04, loomY, loomZ], [0, loomY + 0.004, loomZ + 0.004], [CYL_X[0] - 0.03, loomY, loomZ], [-0.26, loomY - 0.01, loomZ + 0.02], [-0.32, loomY - 0.04, loomZ + 0.05]], 0.0075), M.rubber()))
+  for (const x of CYL_X) g.add(mesh(tube(d, [[x, 0.014, 0.058], [x - 0.006, loomY, loomZ - 0.004]], 0.004), M.rubber()))
+  if (d === 'high') for (let i = 0; i < 26; i++) {
+    // 波紋管的環紋
+    const x = CYL_X[3] + 0.035 - i * 0.0155
+    g.add(mesh(new THREE.TorusGeometry(0.0078, 0.0011, 4, 12), M.rubber(), x, loomY + 0.002, loomZ + 0.002, 0, Math.PI / 2, 0))
   }
   return g
 })
@@ -337,15 +399,34 @@ const P_COMP_OUT: [number, number, number] = [0.11, 0.25, 0.31]
 const P_THROTTLE_IN: [number, number, number] = [0.395, 0.193, -0.28]
 const P_IC_R: [number, number, number] = [0.95, -0.07, 0.29]
 const P_IC_L: [number, number, number] = [0.95, -0.07, -0.29]
-const P_AIRBOX_OUT: [number, number, number] = [0.55, 0.3, -0.37]
+// R2：空濾盒搬到引擎前方中間（車座標 x 1.80、y 0.82、z -0.04），出口在它的右後方
+//   出口車座標 ≈ (1.80 - 0.215, 0.82 - 0.005, -0.04 + 0.30) → 引擎座標（減掉 eng.assembly 的 1.15, 0.4, 0）
+const P_AIRBOX_OUT: [number, number, number] = [0.435, 0.415, 0.26]
+
+/** 把一個「沿 Y 軸」的環形幾何（管束、波紋）擺到管子端點 p，朝向 p → toward 的方向 */
+function clampLike(_d: Detail, geo: THREE.BufferGeometry, p: readonly number[], toward: readonly number[], m: THREE.Material): THREE.Mesh {
+  const o = new THREE.Mesh(geo, m)
+  const dir = new THREE.Vector3(toward[0] - p[0], toward[1] - p[1], toward[2] - p[2]).normalize()
+  o.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir)
+  // 往管子裡面挪一點，管束才是箍在管子上而不是懸在管口
+  o.position.set(p[0], p[1], p[2]).addScaledVector(dir, 0.012)
+  return o
+}
 
 registerProcedural('inlet_duct_v1', (d) => {
   const g = new THREE.Group()
-  g.add(mesh(tube(d, [P_AIRBOX_OUT, [0.5, 0.34, -0.15], [0.44, 0.3, 0.12], [0.31, 0.15, 0.265], P_COMP_IN], 0.034), M.rubber()))
-  // 波紋段
-  for (let i = 0; i < 6; i++) g.add(mesh(new THREE.TorusGeometry(0.036, 0.004, 6, segs(d, 20, 12, 8)), M.rubber(), 0.47 - i * 0.004, 0.33, -0.1 + i * 0.03, 0, Math.PI / 2 - 0.3, 0))
-  // 束環
-  for (const p of [P_AIRBOX_OUT, P_COMP_IN]) g.add(mesh(new THREE.TorusGeometry(0.036, 0.003, 6, segs(d, 20, 12, 8)), M.steel(), p[0], p[1], p[2], 0, Math.PI / 2, 0))
+  // R2：從前方的空濾盒出口往後、往下，沿著引擎右前方接到渦輪壓縮端
+  const path: [number, number, number][] = [P_AIRBOX_OUT, [0.38, 0.39, 0.285], [0.32, 0.3, 0.3], [0.26, 0.2, 0.29], [0.2, 0.14, 0.278], P_COMP_IN]
+  g.add(mesh(tube(d, path, 0.034), M.rubber()))
+  // 波紋段（往下彎的那一段）
+  if (d !== 'low') for (let i = 0; i < 6; i++) {
+    const t = i / 5
+    const p = [0.335 - t * 0.05, 0.33 - t * 0.09, 0.298 - t * 0.006] as const
+    g.add(clampLike(d, new THREE.TorusGeometry(0.036, 0.004, 6, segs(d, 20, 12, 8)).rotateX(Math.PI / 2), [p[0], p[1], p[2]], [p[0] - 0.05, p[1] - 0.09, p[2]], M.rubber()))
+  }
+  // 兩端的蝸桿式管束
+  g.add(clampLike(d, hoseClamp(d, 0.034), P_AIRBOX_OUT, path[1], M.steel()))
+  g.add(clampLike(d, hoseClamp(d, 0.034), P_COMP_IN, path[path.length - 2], M.steel()))
   return g
 })
 
@@ -364,6 +445,54 @@ registerProcedural('air_filter_v1', (d) => {
   const g = grp(mesh(rbox(d, 0.3, 0.012, 0.24, 0.004), M.rubber(), 0, -0.012, 0))
   const n = d === 'low' ? 10 : 24
   for (let i = 0; i < n; i++) g.add(mesh(new THREE.BoxGeometry(0.28, 0.035, 0.004), M.filter(), 0, 0.006, -0.11 + (i / (n - 1)) * 0.22))
+  return g
+})
+
+/**
+ * R2 空濾盒（依 ZL 實車引擎室照片）：F30 N20 的空濾盒橫躺在引擎前方、水箱上面，
+ * 上蓋是一個「T」字形：後半段寬、前半段（往水箱罩方向）窄，前緣有金屬卡扣。
+ * 空氣從前方（腎型水箱罩後面）進來，濾過後從右後方的出口接到渦輪。
+ *
+ *          +X（車頭）
+ *        ┌───────┐        ← 窄的前段（進風）
+ *   ┌────┘       └────┐
+ *   │   濾芯在這一層下  │   ← 寬的後段
+ *   └──────────────[出口]   出口在右後（+Z）
+ *
+ * 座標：原點在盒子中心。寬（Z）0.80 m、深（X）0.38 m、高 0.11 m（照片比例估算）。
+ */
+export const AIRBOX = { w: 0.8, rear: 0.24, stemW: 0.32, stemD: 0.14, h: 0.11 }
+registerProcedural('airbox_v2', (d) => {
+  const g = new THREE.Group()
+  const { w, rear, stemW, stemD, h } = AIRBOX
+  const xr = -0.19 + rear / 2           // 寬段中心 x
+  const xs = -0.19 + rear + stemD / 2   // 窄段中心 x
+  // 下殼（深灰）與上蓋（黑），中間一條分模線
+  g.add(mesh(rbox(d, rear, h * 0.55, w, 0.02), M.greyPlastic(), xr, -h * 0.2, 0))
+  g.add(mesh(rbox(d, stemD, h * 0.55, stemW, 0.02), M.greyPlastic(), xs, -h * 0.2, 0))
+  g.add(mesh(rbox(d, rear + 0.006, h * 0.42, w + 0.006, 0.022), M.blackPlastic(), xr, h * 0.27, 0))
+  g.add(mesh(rbox(d, stemD + 0.006, h * 0.42, stemW + 0.006, 0.022), M.blackPlastic(), xs, h * 0.27, 0))
+  // 上蓋的三道橫向加強紋（照片上清楚可見）
+  for (const [x, len] of [[xr - 0.07, w - 0.12], [xr + 0.0, w - 0.1], [xr + 0.07, w - 0.16]] as const) g.add(mesh(rbox(d, 0.008, 0.006, len, 0.003), M.blackPlastic(), x, h * 0.48 + 0.003, 0.02))
+  // 前緣的金屬卡扣（寬段前緣兩個、窄段前端一個）
+  for (const z of [0.3, 0.12, -0.3]) {
+    g.add(mesh(rbox(d, 0.012, 0.03, 0.022, 0.003), M.steel(), -0.19 + rear + 0.004, h * 0.15, z))
+  }
+  g.add(mesh(rbox(d, 0.012, 0.03, 0.022, 0.003), M.steel(), -0.19 + rear + stemD + 0.004, h * 0.15, 0))
+  // 進風口（往水箱罩）
+  g.add(mesh(rbox(d, 0.04, h * 0.5, stemW * 0.8, 0.012), M.blackPlastic(), -0.19 + rear + stemD + 0.02, -h * 0.05, 0))
+  // 出口：右後方往後的短管，接進氣管
+  g.add(mesh(cylX(d, 0.038, 0.06), M.blackPlastic(), -0.19 - 0.025, -h * 0.05, 0.3))
+  // 蓋子上的固定螺絲
+  for (const z of [-0.36, 0.36]) g.add(mesh(hexHead(d, 0.010, 0.006), M.darkSteel(), xr - 0.08, h * 0.48, z))
+  return g
+})
+
+registerProcedural('air_filter_v2', (d) => {
+  // 大片平板濾芯：橡膠框 + 摺紙
+  const g = grp(mesh(rbox(d, 0.2, 0.012, 0.66, 0.004), M.rubber(), 0, -0.012, 0))
+  const n = d === 'low' ? 16 : 48
+  for (let i = 0; i < n; i++) g.add(mesh(new THREE.BoxGeometry(0.18, 0.03, 0.004), M.filter(), 0, 0.006, -0.31 + (i / (n - 1)) * 0.62))
   return g
 })
 
@@ -665,6 +794,46 @@ registerProcedural('coolant_hoses_v1', (d) => {
   g.add(mesh(tube(d, [[-0.29, 0.1, -0.12], [-0.42, 0.14, -0.18], [-0.6, 0.2, -0.24]], 0.012), r()))                   // 暖氣水管
   g.add(mesh(tube(d, [[-0.29, 0.1, -0.08], [-0.44, 0.13, -0.12], [-0.6, 0.19, -0.16]], 0.012), r()))
   g.add(mesh(tube(d, [[0.0, 0.2, 0.28], [0.12, 0.15, 0.3], [0.28, -0.05, 0.25]], 0.007), r()))                        // 渦輪水冷管
+  // R2：上、下水管兩端的管束
+  const ends: [number[], number[], number][] = [
+    [[0.35, 0.125, 0.115], [0.5, 0.2, 0.2], 0.019], [[0.81, 0.3, 0.35], [0.72, 0.26, 0.33], 0.019],
+    [[0.81, 0.0, 0.35], [0.62, -0.08, 0.3], 0.019], [[0.295, -0.1, 0.2], [0.4, -0.11, 0.22], 0.019],
+  ]
+  for (const [p, q, rr] of ends) g.add(clampLike(d, hoseClamp(d, rr), p, q, M.steel()))
+  return g
+})
+
+/**
+ * R2 副水箱（膨脹水箱，依 ZL 實車引擎室照片）：引擎室左前角、左避震塔前面，半透明的乳白塑膠，
+ * 看得到裡面藍綠色的冷卻液液面；上面是黑色的蓋子（有警告標籤）。
+ * 座標：原點在水箱中心。
+ */
+registerProcedural('expansion_tank_v1', (d) => {
+  const g = new THREE.Group()
+  const shell = new THREE.MeshPhysicalMaterial({ color: 0xe9e1c8, roughness: 0.5, metalness: 0, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide })
+  g.add(mesh(rbox(d, 0.15, 0.12, 0.12, 0.03), shell))
+  // 冷卻液（藍綠色），液面在 MIN 與 MAX 之間
+  const fluid = new THREE.MeshStandardMaterial({ color: 0x2fa7b5, roughness: 0.15, metalness: 0, transparent: true, opacity: 0.8 })
+  g.add(mesh(rbox(d, 0.138, 0.058, 0.108, 0.022), fluid, 0, -0.026, 0))
+  // MIN / MAX 刻度（朝向車內側 +Z，打開引擎蓋站在車旁看得到）
+  for (const y of [-0.04, 0.012]) g.add(mesh(rbox(d, 0.05, 0.003, 0.002, 0.001), M.dark(), 0.02, y, 0.061))
+  // 加注口與蓋子
+  g.add(mesh(cylY(d, 0.026, 0.02), shell, 0.03, 0.068, 0.01))
+  g.add(mesh(cylY(d, 0.032, 0.024), M.blackPlastic(), 0.03, 0.088, 0.01))
+  g.add(mesh(cylY(d, 0.02, 0.003), M.orange(), 0.03, 0.1015, 0.01))      // 蓋上的警告標籤（照片上是黃色）
+  if (d !== 'low') for (let i = 0; i < 12; i++) {
+    // 蓋子側面的止滑紋
+    const a = (i / 12) * Math.PI * 2
+    g.add(mesh(new THREE.BoxGeometry(0.004, 0.02, 0.004), M.blackPlastic(), 0.03 + Math.cos(a) * 0.032, 0.088, 0.01 + Math.sin(a) * 0.032))
+  }
+  // 底部出水管（往下接到水箱）與側面的排氣細管
+  g.add(mesh(cylY(d, 0.009, 0.03), shell, -0.04, -0.075, 0))
+  g.add(mesh(tube(d, [[-0.04, -0.085, 0], [-0.03, -0.14, 0.04], [0.0, -0.2, 0.1]], 0.009), M.rubber()))
+  g.add(clampLike(d, hoseClamp(d, 0.009, 0.006), [-0.04, -0.09, 0], [-0.03, -0.14, 0.04], M.steel()))
+  g.add(mesh(cylZ(d, 0.004, 0.03), shell, 0.05, 0.03, 0.07))
+  // 固定耳
+  g.add(mesh(rbox(d, 0.03, 0.01, 0.025, 0.003), shell, -0.085, -0.03, -0.04))
+  g.add(mesh(hexHead(d, 0.010, 0.006), M.darkSteel(), -0.085, -0.025, -0.04))
   return g
 })
 

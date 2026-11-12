@@ -99,6 +99,16 @@ export const Part = z.object({
   tags: z.array(z.string()).default([]),
   /** 位置是否只是示意（還沒對照實車尺寸） */
   positionApproximate: z.boolean().default(true),
+  /**
+   * R2：外形的依據（和數值的 confidence 同一套精神：越寫實越要有依據）。
+   *   schematic = 示意，照功能畫的方塊、圓柱（預設）
+   *   photo     = 照實車照片描的外形與位置（source 必填，指向 sources.json）
+   *   scan      = 實車掃描　　cad = 官方圖面或 CAD
+   */
+  shape: z.object({
+    basis: z.enum(['schematic', 'photo', 'scan', 'cad']),
+    source: z.string().nullable().default(null),
+  }).default({ basis: 'schematic', source: null }),
 })
 export type Part = z.infer<typeof Part>
 export type PartInput = z.input<typeof Part>
