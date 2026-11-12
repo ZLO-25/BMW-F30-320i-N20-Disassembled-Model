@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useRef } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { loadData } from '../core/loadData'
 import { ui } from '../core/i18n'
 import { useAppStore } from '../store/useAppStore'
@@ -8,6 +8,7 @@ import { InfoCard } from './InfoCard'
 import { AboutModal } from './AboutModal'
 import { Tray } from './Tray'
 import { QualityToast } from './QualityToast'
+import { Onboarding } from './Onboarding'
 import { HintToast } from './HintToast'
 import { ViewTools } from './ViewTools'
 import { VariantModal } from './VariantModal'
@@ -21,6 +22,12 @@ const CompareView = lazy(() => import('./CompareView').then(m => ({ default: m.C
 const LearnPanel = lazy(() => import('./LearnPanel').then(m => ({ default: m.LearnPanel })))
 const MaintenancePanel = lazy(() => import('./MaintenancePanel').then(m => ({ default: m.MaintenancePanel })))
 const WEBGL = webglSupported()
+
+type TabId = 'tree' | 'info' | 'tray' | 'anim' | 'learn' | 'maint'
+const TABS: { id: TabId; icon: string; key: 'tabTree' | 'info' | 'tray' | 'animations' | 'learn' | 'maint' }[] = [
+  { id: 'tree', icon: '🌲', key: 'tabTree' }, { id: 'info', icon: 'ℹ️', key: 'info' }, { id: 'tray', icon: '📦', key: 'tray' },
+  { id: 'anim', icon: '▶', key: 'animations' }, { id: 'learn', icon: '🎓', key: 'learn' }, { id: 'maint', icon: '🧰', key: 'maint' },
+]
 
 export function App() {
   const lang0 = useAppStore(s => s.lang)
@@ -54,6 +61,20 @@ function AppBody() {
   const canUndo = useAppStore(s => s.history.length > 0)
   const canRedo = useAppStore(s => s.future.length > 0)
   const trayCount = useAppStore(s => s.teardown.units.length)
+  const [moreOpen, setMoreOpen] = useState(false)
+  // E5：手機上免責聲明可以關掉（桌機一律顯示；「關於」頁有全文）
+  const [discHidden, setDiscHidden] = useState(() => { try { return localStorage.getItem('n20.disclaimer.v1') === '1' } catch { return false } })
+  const dismissDisclaimer = () => { setDiscHidden(true); try { localStorage.setItem('n20.disclaimer.v1', '1') } catch { /* 存不了就下次再顯示 */ } }
+
+  // E5：分頁用左右鍵切換（WAI-ARIA tablist）
+  const onTabKey = (e: React.KeyboardEvent) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Home' && e.key !== 'End') return
+    e.preventDefault()
+    const i = TABS.findIndex(tb => tb.id === drawerTab)
+    const n = e.key === 'Home' ? 0 : e.key === 'End' ? TABS.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : -1) + TABS.length) % TABS.length
+    setDrawer(true, TABS[n].id)
+    requestAnimationFrame(() => document.getElementById(`tab-${TABS[n].id}`)?.focus())
+  }
 
   // 鍵盤：Ctrl+Z 復原、Ctrl+Shift+Z / Ctrl+Y 重做
   useEffect(() => {
@@ -70,41 +91,49 @@ function AppBody() {
   return (
     <div className="app">
       <header className="topbar">
-        <h1>{ui('appTitle', lang)}</h1>
+        <h1><span className="title-full">{ui('appTitle', lang)}</span><span className="title-short">{ui('appTitleShort', lang)}</span></h1>
         <div className="topbar-actions">
-          <div className="seg" role="group" aria-label={ui('variantLabel', lang)}>
-            <span className="seg-label">{ui('variantLabel', lang)}</span>
-            <button className={variant === 'manual' ? 'on' : ''} onClick={() => switchVariant('manual')}>{ui('variantManual', lang)}</button>
-            <button className={variant === 'auto' ? 'on' : ''} onClick={() => switchVariant('auto')}>{ui('variantAuto', lang)}</button>
-            <button onClick={() => setVariantModalOpen(true)} title={ui('chooseVariant', lang)}>?</button>
-          </div>
           <div className="seg mode" role="group" aria-label={ui('modeLabel', lang)}>
-            <button className={mode === 'inspect' ? 'on' : ''} onClick={() => setMode('inspect')}>🔍 {ui('modeInspect', lang)}</button>
-            <button className={mode === 'teardown' ? 'on' : ''} onClick={() => setMode('teardown')}>🔧 {ui('modeTeardown', lang)}</button>
+            <button className={mode === 'inspect' ? 'on' : ''} onClick={() => setMode('inspect')} title={ui('modeInspect', lang)}>🔍<span className="hide-sm"> {ui('modeInspect', lang)}</span></button>
+            <button className={mode === 'teardown' ? 'on' : ''} onClick={() => setMode('teardown')} title={ui('modeTeardown', lang)}>🔧<span className="hide-sm"> {ui('modeTeardown', lang)}</span></button>
           </div>
-          <button onClick={undo} disabled={!canUndo} title={`${ui('undo', lang)} (Ctrl+Z)`}>↶<span className="hide-sm"> {ui('undo', lang)}</span></button>
-          <button onClick={redo} disabled={!canRedo} title={`${ui('redo', lang)} (Ctrl+Y)`}>↷<span className="hide-sm"> {ui('redo', lang)}</span></button>
-          <div className="seg" role="group" aria-label={ui('body', lang)}>
-            <span className="seg-label">{ui('body', lang)}</span>
-            {(['solid', 'xray', 'hidden'] as const).map(m => (
-              <button key={m} className={bodyMode === m ? 'on' : ''} onClick={() => setBodyMode(m)}>
-                {ui(m === 'solid' ? 'bodySolid' : m === 'xray' ? 'bodyXray' : 'bodyHidden', lang)}
-              </button>
-            ))}
+          <button onClick={undo} disabled={!canUndo} title={`${ui('undo', lang)} (Ctrl+Z)`} aria-label={ui('undo', lang)}>↶<span className="hide-sm"> {ui('undo', lang)}</span></button>
+          <button onClick={redo} disabled={!canRedo} title={`${ui('redo', lang)} (Ctrl+Y)`} aria-label={ui('redo', lang)}>↷<span className="hide-sm"> {ui('redo', lang)}</span></button>
+          {/* E5：手機上其餘的控制項收進「⋯」選單（桌機 display: contents，等於沒有這一層） */}
+          <button className="more-btn" aria-expanded={moreOpen} aria-label={ui('moreMenu', lang)} onClick={() => setMoreOpen(o => !o)}>⋯</button>
+          <div className={`topbar-more ${moreOpen ? 'open' : ''}`}>
+            <div className="seg" role="group" aria-label={ui('variantLabel', lang)}>
+              <span className="seg-label">{ui('variantLabel', lang)}</span>
+              <button className={variant === 'manual' ? 'on' : ''} onClick={() => switchVariant('manual')}>{ui('variantManual', lang)}</button>
+              <button className={variant === 'auto' ? 'on' : ''} onClick={() => switchVariant('auto')}>{ui('variantAuto', lang)}</button>
+              <button onClick={() => setVariantModalOpen(true)} title={ui('chooseVariant', lang)}>?</button>
+            </div>
+            <div className="seg" role="group" aria-label={ui('body', lang)}>
+              <span className="seg-label">{ui('body', lang)}</span>
+              {(['solid', 'xray', 'hidden'] as const).map(m => (
+                <button key={m} className={bodyMode === m ? 'on' : ''} onClick={() => setBodyMode(m)}>
+                  {ui(m === 'solid' ? 'bodySolid' : m === 'xray' ? 'bodyXray' : 'bodyHidden', lang)}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => { resetCamera(); setMoreOpen(false) }} title={ui('resetCamera', lang)}>⟲ {ui('resetCamera', lang)}</button>
+            <button onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}>{lang === 'zh' ? 'EN' : '中'}</button>
+            <button onClick={() => { setAboutOpen(true); setMoreOpen(false) }}>{ui('about', lang)}</button>
           </div>
-          <button onClick={resetCamera} title={ui('resetCamera', lang)}>⟲<span className="hide-sm"> {ui('resetCamera', lang)}</span></button>
-          <button onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')}>{lang === 'zh' ? 'EN' : '中'}</button>
-          <button onClick={() => setAboutOpen(true)}>{ui('about', lang)}</button>
         </div>
       </header>
 
-      <div className="disclaimer">⚠ {ui('disclaimer', lang)}</div>
+      <div className={`disclaimer ${discHidden ? 'dismissed' : ''}`}>
+        <span>⚠ {ui('disclaimer', lang)}</span>
+        <button className="disc-x" onClick={dismissDisclaimer} aria-label={ui('disclaimerClose', lang)} title={ui('disclaimerClose', lang)}>×</button>
+      </div>
 
       <main className="main">
         <div className="viewport">
           {WEBGL ? <Scene data={data} /> : <div className="nowebgl"><p>{ui('noWebgl', lang)}</p></div>}
           <HintToast data={data} />
           <QualityToast />
+          <Onboarding />
           <ViewTools data={data} />
           <div className="touch-hint">{ui(mode === 'teardown' ? 'touchHintTeardown' : 'touchHint', lang)}</div>
         </div>
@@ -113,24 +142,24 @@ function AppBody() {
 
         <aside className={`side ${drawerOpen ? 'open' : 'closed'}`}>
           <DrawerHandle />
-          <div className="side-tabs">
-            <button className={drawerTab === 'tree' ? 'on' : ''} onClick={() => setDrawer(true, 'tree')}>{ui('partTree', lang)}</button>
-            <button className={drawerTab === 'info' ? 'on' : ''} onClick={() => setDrawer(true, 'info')}>{ui('info', lang)}</button>
-            <button className={drawerTab === 'tray' ? 'on' : ''} onClick={() => setDrawer(true, 'tray')}>
-              {ui('tray', lang)}{trayCount > 0 && <span className="count">{trayCount}</span>}
-            </button>
-            <button className={drawerTab === 'anim' ? 'on' : ''} onClick={() => setDrawer(true, 'anim')}>▶ {ui('animations', lang)}</button>
-            <button className={drawerTab === 'learn' ? 'on' : ''} onClick={() => setDrawer(true, 'learn')}>🎓 {ui('learn', lang)}</button>
-            <button className={drawerTab === 'maint' ? 'on' : ''} onClick={() => setDrawer(true, 'maint')}>🧰 {ui('maint', lang)}</button>
+          <div className="side-tabs" role="tablist" aria-label="panels" onKeyDown={onTabKey}>
+            {TABS.map(tb => (
+              <button key={tb.id} id={`tab-${tb.id}`} role="tab" aria-selected={drawerTab === tb.id} aria-controls={`pane-${tb.id}`} tabIndex={drawerTab === tb.id ? 0 : -1}
+                className={drawerTab === tb.id ? 'on' : ''} onClick={() => setDrawer(true, tb.id)}>
+                <span className="tab-ico" aria-hidden>{tb.icon}</span>
+                <span className="tab-txt">{ui(tb.key, lang)}</span>
+                {tb.id === 'tray' && trayCount > 0 && <span className="count">{trayCount}</span>}
+              </button>
+            ))}
             <button className="side-toggle" onClick={() => setDrawer(!drawerOpen)} aria-label="toggle">{drawerOpen ? '▾' : '▴'}</button>
           </div>
           <div className="side-body">
-            <div className={`pane ${drawerTab === 'tree' ? 'show' : ''}`}><PartTree data={data} /></div>
-            <div className={`pane ${drawerTab === 'info' ? 'show' : ''}`}><InfoCard data={data} /></div>
-            <div className={`pane ${drawerTab === 'tray' ? 'show' : ''}`}><Tray data={data} /></div>
-            <div className={`pane ${drawerTab === 'anim' ? 'show' : ''}`}><AnimPanel data={data} /></div>
-            <div className={`pane ${drawerTab === 'learn' ? 'show' : ''}`}><Suspense fallback={<p className="muted">{ui('loading', lang)}</p>}>{drawerTab === 'learn' && <LearnPanel data={data} />}</Suspense></div>
-            <div className={`pane ${drawerTab === 'maint' ? 'show' : ''}`}><Suspense fallback={<p className="muted">{ui('loading', lang)}</p>}>{drawerTab === 'maint' && <MaintenancePanel data={data} />}</Suspense></div>
+            <div id="pane-tree" role="tabpanel" aria-labelledby="tab-tree" className={`pane ${drawerTab === 'tree' ? 'show' : ''}`}><PartTree data={data} /></div>
+            <div id="pane-info" role="tabpanel" aria-labelledby="tab-info" className={`pane ${drawerTab === 'info' ? 'show' : ''}`}>{drawerTab === 'info' && <InfoCard data={data} />}</div>
+            <div id="pane-tray" role="tabpanel" aria-labelledby="tab-tray" className={`pane ${drawerTab === 'tray' ? 'show' : ''}`}>{drawerTab === 'tray' && <Tray data={data} />}</div>
+            <div id="pane-anim" role="tabpanel" aria-labelledby="tab-anim" className={`pane ${drawerTab === 'anim' ? 'show' : ''}`}>{drawerTab === 'anim' && <AnimPanel data={data} />}</div>
+            <div id="pane-learn" role="tabpanel" aria-labelledby="tab-learn" className={`pane ${drawerTab === 'learn' ? 'show' : ''}`}><Suspense fallback={<p className="muted">{ui('loading', lang)}</p>}>{drawerTab === 'learn' && <LearnPanel data={data} />}</Suspense></div>
+            <div id="pane-maint" role="tabpanel" aria-labelledby="tab-maint" className={`pane ${drawerTab === 'maint' ? 'show' : ''}`}><Suspense fallback={<p className="muted">{ui('loading', lang)}</p>}>{drawerTab === 'maint' && <MaintenancePanel data={data} />}</Suspense></div>
           </div>
         </aside>
       </main>

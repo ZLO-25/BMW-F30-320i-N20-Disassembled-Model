@@ -35,8 +35,9 @@ export function PartTree({ data }: { data: DataBundle }) {
 function TreeNode({ part, data, visible, matches, expandedSet }: {
   part: Part; data: DataBundle; visible: (p: Part) => boolean; matches: Set<string>; expandedSet: Set<string>
 }) {
-  const selectedId = useAppStore(s => s.selectedId)
-  const hoveredId = useAppStore(s => s.hoveredId)
+  // E4：只訂閱「是不是我」的布林值，滑鼠掃過零件時只有前後兩個節點會重新渲染（以前是全部）
+  const isSelected = useAppStore(s => s.selectedId === part.id)
+  const isHovered = useAppStore(s => s.hoveredId === part.id)
   const select = useAppStore(s => s.select)
   const hover = useAppStore(s => s.hover)
   const toggle = useAppStore(s => s.toggleExpanded)
@@ -45,7 +46,7 @@ function TreeNode({ part, data, visible, matches, expandedSet }: {
   const kids = (data.graph.children.get(part.id) ?? []).filter(visible)
   const hasKids = (data.graph.children.get(part.id) ?? []).length > 0
   const open = expandedSet.has(part.id)
-  const cls = ['node', selectedId === part.id ? 'selected' : '', hoveredId === part.id ? 'hovered' : '', matches.has(part.id) ? 'match' : '', removed ? 'removed' : ''].join(' ')
+  const cls = ['node', isSelected ? 'selected' : '', isHovered ? 'hovered' : '', matches.has(part.id) ? 'match' : '', removed ? 'removed' : ''].join(' ')
   return (
     <li>
       <div className={cls} onMouseEnter={() => hover(part.id)} onMouseLeave={() => hover(null)}>

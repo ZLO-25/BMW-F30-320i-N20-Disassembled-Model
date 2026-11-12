@@ -22,6 +22,7 @@ export function InfoCard({ data }: { data: DataBundle }) {
   const teardown = useAppStore(s => s.teardown)
   const removedIds = useAppStore(s => s.removedIds)
   const tryRemove = useAppStore(s => s.tryRemove)
+  const focusPart = useAppStore(s => s.focusPart)
   const tryInstall = useAppStore(s => s.tryInstall)
   const toolsInHand = useAppStore(s => s.toolsInHand)
   const toggleTool = useAppStore(s => s.toggleTool)
@@ -30,7 +31,7 @@ export function InfoCard({ data }: { data: DataBundle }) {
   if (!part) return <div className="card empty"><p>{ui('selectHint', lang)}</p><ConfidenceLegend lang={lang} /></div>
 
   const ActionBar = () => {
-    if (!part.removable) return <div className="actions"><span className="status fixed">🔒 {ui('statusFixed', lang)}</span></div>
+    if (!part.removable) return <div className="actions"><span className="status fixed">🔒 {ui('statusFixed', lang)}</span><button onClick={() => focusPart(part.id)}>🎯 {ui('focusPart', lang)}</button></div>
     const removed = removedIds.has(part.id)
     const unit = removed ? unitOf(teardown, part.id) : undefined
     if (removed && unit && unit.root !== part.id) {
@@ -45,6 +46,7 @@ export function InfoCard({ data }: { data: DataBundle }) {
         {removed
           ? <button className="primary" onClick={() => tryInstall(data.graph, part.id)}>⤺ {ui('install', lang)}</button>
           : <button className="primary" onClick={() => tryRemove(data.graph, part.id)}>🔧 {ui('remove', lang)}</button>}
+        {!removed && <button onClick={() => focusPart(part.id)}>🎯 {ui('focusPart', lang)}</button>}
         {carried.length > 0 && <p className="muted small">{ui('removeEffect', lang)}{carried.slice(0, 6).map(c => t(c.name, lang)).join('、')}{carried.length > 6 ? ` …(+${carried.length - 6})` : ''}</p>}
       </div>
     )

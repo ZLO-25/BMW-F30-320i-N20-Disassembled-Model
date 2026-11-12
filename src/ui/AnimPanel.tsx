@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import type { DataBundle } from '../core/loadData'
 import { t, ui, fmt } from '../core/i18n'
 import { useAppStore } from '../store/useAppStore'
@@ -10,7 +11,8 @@ export function AnimPanel({ data }: { data: DataBundle }) {
   const variant = useAppStore(s => s.variant)
   const anim = useAppStore(s => s.anim)
   const setAnim = useAppStore(s => s.setAnim)
-  const animT = useAppStore(s => s.animT)
+  // E4：動畫播放時 animT 每秒改二十幾次；面板只關心「現在在哪個階段」（整數），滑桿自己直接寫值，不重新渲染
+  const phaseIdx = useAppStore(s => { const d = s.anim ? ANIM_BY_ID.get(s.anim) : undefined; return d?.phases ? d.phases.findIndex(p => s.animT < p.until) : -1 })
   const setAnimT = useAppStore(s => s.setAnimT)
   const playing = useAppStore(s => s.animPlaying)
   const setPlaying = useAppStore(s => s.setAnimPlaying)
@@ -24,7 +26,7 @@ export function AnimPanel({ data }: { data: DataBundle }) {
 
   const list = animationsFor(variant)
   const def = anim ? ANIM_BY_ID.get(anim) : undefined
-  const phase = def?.phases?.find(p => animT < p.until)
+  const phase = phaseIdx >= 0 ? def?.phases?.[phaseIdx] : undefined
   // 動畫用到的零件如果已經拆下，動畫會缺角：提醒並提供一鍵裝回
   const missing = def ? def.parts.filter(p => removedIds.has(p)) : []
 
@@ -64,7 +66,7 @@ export function AnimPanel({ data }: { data: DataBundle }) {
             <>
               <div className="anim-ctrl">
                 <button onClick={() => setPlaying(!playing)}>{playing ? '❚❚ ' + ui('pause', lang) : '▶ ' + ui('play', lang)}</button>
-                <input type="range" min={0} max={1} step={0.005} value={animT} onChange={e => { setPlaying(false); setAnimT(Number(e.target.value)) }} />
+                <AnimSlider onUser={v => { setPlaying(false); setAnimT(v) }} />
               </div>
               {def.sliderLabels && <div className="anim-ends"><span>{t(def.sliderLabels[0], lang)}</span><span>{t(def.sliderLabels[1], lang)}</span></div>}
               {def.phases && (
@@ -93,4 +95,15 @@ export function AnimPanel({ data }: { data: DataBundle }) {
       )}
     </div>
   )
+}
+
+/** 動畫進度滑桿：不訂閱 animT，改用 store.subscribe 直接寫 input.value（動畫不要每格 setState 的慣例） */
+function AnimSlider({ onUser }: { onUser: (v: number) => void }) {
+  const ref = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    const sync = (t: number) => { if (ref.current && document.activeElement !== ref.current) ref.current.value = String(t) }
+    sync(useAppStore.getState().animT)
+    return useAppStore.subscribe((s, prev) => { if (s.animT !== prev.animT) sync(s.animT) })
+  }, [])
+  return <input ref={ref} type="range" min={0} max={1} step={0.005} defaultValue={useAppStore.getState().animT} onChange={e => onUser(Number(e.target.value))} />
 }

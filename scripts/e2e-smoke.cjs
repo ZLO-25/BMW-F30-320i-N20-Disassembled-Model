@@ -146,7 +146,10 @@ async function main() {
     await page.click('.tree .node.match .label')
     await act('remove a part', () => page.click('.actions button.primary'))
     const tray = await page.$eval('.side-tabs .count', el => el.textContent).catch(() => null)
-    if (tray !== '1') fails.push(`tray count expected 1, got ${tray}`)
+    if (tray !== '1') {
+      await page.click('.side-tabs button:has-text("托盤")').catch(() => {})
+      fails.push(`tray count expected 1, got ${tray}: ${(await page.textContent('.pane.show').catch(() => '')).slice(0, 300)}`)
+    }
 
     // E2：畫質第 3 級（後處理 + 半解析度 AO + 2x 取樣）也要能按需渲染；檢視工具的畫質切換要生效（含重建畫布）
     {

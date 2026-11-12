@@ -24,11 +24,18 @@ const spring = (d: Detail, r: number, h: number, turns: number, wire: number) =>
 }
 
 // ───────────────────────── 輪胎與輪圈 ─────────────────────────
+/** E5：輪圈、碟盤這種「一眼就看得出是圓的」東西，low 也至少 16 邊（以前是 8 邊，看起來像壞掉）；mid / high 照舊 */
+const roundZ = (d: Detail, r: number, len: number) => {
+  if (d !== 'low') return cylZ(d, r, len)
+  const g = new THREE.CylinderGeometry(r, r, len, 16)
+  g.rotateX(Math.PI / 2)
+  return g
+}
 registerProcedural('wheel_v1', (d) => {
   const g = grp('spin')
-  const tyre = new THREE.TorusGeometry(0.275, 0.07, segs(d, 16, 10, 6), segs(d, 48, 24, 12))
+  const tyre = new THREE.TorusGeometry(0.275, 0.07, segs(d, 16, 10, 8), segs(d, 48, 24, 20))
   g.add(mesh(tyre, M.rubber()))
-  g.add(mesh(cylZ(d, 0.22, 0.2), mat(0x9ea3aa, { metalness: 0.9, roughness: 0.25 })))
+  g.add(mesh(roundZ(d, 0.22, 0.2), mat(0x9ea3aa, { metalness: 0.9, roughness: 0.25 })))
   const spokeGeo = new THREE.BoxGeometry(0.035, 0.2, 0.02)
   for (let i = 0; i < 5; i++) { const sp = new THREE.Mesh(spokeGeo, mat(0x9ea3aa, { metalness: 0.9, roughness: 0.3 })); sp.rotation.z = (i / 5) * Math.PI * 2; sp.position.z = 0.1; g.add(sp) }
   g.add(mesh(cylZ(d, 0.05, 0.03), M.darkSteel(), 0, 0, 0.11))
@@ -132,14 +139,14 @@ registerProcedural('subframe_rear_v1', (d) => {
 // ───────────────────────── 煞車 ─────────────────────────
 registerProcedural('rotor_v1', (d) => {
   const g = grp('spin')
-  g.add(mesh(cylZ(d, 0.155, 0.022), M.steel()))
+  g.add(mesh(roundZ(d, 0.155, 0.022), M.steel()))
   g.add(mesh(cylZ(d, 0.085, 0.045), M.darkSteel(), 0, 0, 0.02))   // 帽（hat）
   for (let i = 0; i < 5; i++) g.add(mesh(cylZ(d, 0.007, 0.01), M.darkSteel(), Math.cos(i * Math.PI * 2 / 5) * 0.06, Math.sin(i * Math.PI * 2 / 5) * 0.06, 0.045))
   return grp('', g)
 })
 registerProcedural('rotor_rear_v1', (d) => {
   const g = grp('spin')
-  g.add(mesh(cylZ(d, 0.145, 0.018), M.steel()))
+  g.add(mesh(roundZ(d, 0.145, 0.018), M.steel()))
   g.add(mesh(cylZ(d, 0.09, 0.05), M.darkSteel(), 0, 0, 0.02))      // 帽裡面有手煞車鼓
   return grp('', g)
 })

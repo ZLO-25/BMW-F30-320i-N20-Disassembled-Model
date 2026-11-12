@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
@@ -17,16 +17,30 @@ import { Governor, profileFor } from '../core/quality'
 /** E3：後處理（N8AO、postprocessing 約 100 KB gzip）延遲載入；L0／L1 完全用不到就不下載。分包規則見 vite.config.ts */
 const PostFX = lazy(() => import('./PostFX').then(m => ({ default: m.PostFX })))
 
-const CAMERA_POS = new THREE.Vector3(2.7, 1.5, 2.3)
-const TARGET = new THREE.Vector3(1.15, 0.55, 0)
+const CAMERA_POS = new THREE.Vector3(2.7, 1.5, 2.3)   // 只用於建立 Canvas 時的初始值；掛載後 CameraReset 立刻換成 defaultView()
+const TARGET = new THREE.Vector3(0.1, 0.55, 0)
+
+/**
+ * E5 預設視角：退到看得到整台車（約 4.7 × 1.8 × 1.4 m，中心在 x≈0.1），距離依畫面長寬比算——
+ * 寬螢幕近一點，手機直式要退很遠才塞得下車長。以前是固定 (2.7, 1.5, 2.3)，前輪占滿前景、車尾在畫面外。
+ */
+const CAR_CENTER = new THREE.Vector3(0.1, 0.55, 0)
+const VIEW_DIR = new THREE.Vector3(0.62, 0.3, 0.72).normalize()
+const CAR_HALF_SPAN = 2.75   // 車長 + 一點邊界，沿視線方向投影後的半寬（公尺）
+export function defaultView(aspect: number, fovDeg = 42): { pos: THREE.Vector3; target: THREE.Vector3 } {
+  const tanH = Math.tan((fovDeg * Math.PI) / 360) * Math.max(0.3, aspect)
+  const dist = Math.min(14, Math.max(4.2, CAR_HALF_SPAN / tanH))
+  return { pos: CAR_CENTER.clone().addScaledVector(VIEW_DIR, dist), target: CAR_CENTER.clone() }
+}
 
 function CameraReset({ controls }: { controls: React.RefObject<OrbitControlsImpl | null> }) {
   const token = useAppStore(s => s.cameraResetToken)
   const focus = useAppStore(s => s.focus)
-  const { camera } = useThree()
+  const { camera, size } = useThree()
   useEffect(() => {
-    camera.position.copy(CAMERA_POS)
-    controls.current?.target.copy(TARGET)
+    const v = defaultView(size.width / Math.max(1, size.height))
+    camera.position.copy(v.pos)
+    controls.current?.target.copy(v.target)
     controls.current?.update()
     redraw()
   }, [token]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -42,15 +56,28 @@ function CameraReset({ controls }: { controls: React.RefObject<OrbitControlsImpl
   return null
 }
 
-/**
- * U6 環境遮蔽（AO）：角落、縫隙、零件互相靠近的地方自然變暗，立體感差很多。
- *
- *   一般繪製 ──► 深度圖 ──► N8AO 算「這一點周圍被擋住多少」──► 變暗 ──► ACES 色調 ──► 畫面
- *
- * 只在 high / mid 開；low（手機）整段不掛，回到 U6 之前的直接繪製。
- * 掛了後處理之後，色調映射（ACES）改由最後一步 ToneMapping 做，renderer 自己的那份會被關掉。
- * ?ao=0 可以強制關掉（比較前後、或電腦太慢時用）。
- */
+/** E5：資訊卡的「看這個零件」。依該零件在場景裡的世界包圍盒對準；距離 = 大小的 2.5 倍（最近 0.35 m）。選取零件時不會自動移鏡頭，避免使用者迷失方向 */
+function FocusPart({ controls }: { controls: React.RefObject<OrbitControlsImpl | null> }) {
+  const req = useAppStore(s => s.focusPartReq)
+  const registry = useContext(PartRegistryCtx)
+  const { camera } = useThree()
+  useEffect(() => {
+    if (!req) return
+    const obj = registry.get(req.id)
+    if (!obj) return
+    obj.updateWorldMatrix(true, true)
+    const box = new THREE.Box3().setFromObject(obj)
+    if (box.isEmpty()) return
+    const c = box.getCenter(new THREE.Vector3())
+    const dist = Math.max(0.35, box.getSize(new THREE.Vector3()).length() * 2.5)
+    camera.position.copy(c).add(VIEW_DIR.clone().multiplyScalar(dist))
+    controls.current?.target.copy(c)
+    controls.current?.update()
+    redraw()
+  }, [req?.token]) // eslint-disable-line react-hooks/exhaustive-deps
+  return null
+}
+
 /** ?ao=0 強制關掉 AO（比較前後、或電腦太慢時用） */
 const AO_FORCED_OFF = new URLSearchParams(location.search).get('ao') === '0'
 
@@ -148,6 +175,36 @@ function BootGate({ onReady }: { onReady: () => void }) {
   return null
 }
 
+/**
+ * E4：拖曳旋轉時停止「滑鼠掃過哪個零件」的偵測。按下後移動超過 4 px 才算拖曳（單純點一下不受影響，點選零件照常）；
+ * 放開後下一個 tick 恢復，所以拖曳結束那一下不會誤點到零件。
+ */
+function DragGuard() {
+  const gl = useThree(s => s.gl)
+  const setEvents = useThree(s => s.setEvents)
+  useEffect(() => {
+    const el = gl.domElement
+    let down: { x: number; y: number } | null = null
+    let off = false
+    const onDown = (e: PointerEvent) => { down = { x: e.clientX, y: e.clientY } }
+    const onMove = (e: PointerEvent) => {
+      if (!down || off) return
+      if (Math.hypot(e.clientX - down.x, e.clientY - down.y) > 4) { off = true; setEvents({ enabled: false }) }
+    }
+    const onUp = () => { down = null; if (off) { off = false; setTimeout(() => setEvents({ enabled: true }), 0) } }
+    el.addEventListener('pointerdown', onDown)
+    el.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
+    return () => {
+      el.removeEventListener('pointerdown', onDown); el.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onUp)
+      if (off) setEvents({ enabled: true })
+    }
+  }, [gl, setEvents])
+  return null
+}
+
 /** 第一格真的畫出來之後收掉載入畫面 */
 function FirstFrame() {
   const done = useRef(false)
@@ -189,10 +246,12 @@ export function Scene({ data }: { data: DataBundle }) {
       dpr={dpr}
       shadows={shadows}
       camera={{ position: CAMERA_POS.toArray(), fov: 42, near: 0.05, far: 100 }}
+      raycaster={{ firstHitOnly: true } as never}   // E4：配合 BVH，只回傳最近的一個三角形
       onPointerMissed={() => select(null)}
       gl={{ antialias: profile.nativeAA, powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}>
       <BootGate onReady={onReady} />
       <FirstFrame />
+      <DragGuard />
       <InvalidateOnStore />
       <RedrawDriver shadows={shadows} />
       <QualityGovernor />
@@ -211,8 +270,9 @@ export function Scene({ data }: { data: DataBundle }) {
         <AnimationDriver />
       </PartRegistryCtx.Provider>
       <OrbitControls ref={controls} makeDefault target={TARGET.toArray()} enableDamping dampingFactor={0.1}
-        minDistance={0.25} maxDistance={12} maxPolarAngle={Math.PI * 0.78} />
+        minDistance={0.25} maxDistance={20} maxPolarAngle={Math.PI * 0.78} />
       <CameraReset controls={controls} />
+      <PartRegistryCtx.Provider value={registry}><FocusPart controls={controls} /></PartRegistryCtx.Provider>
       <SectionPlane />
       {ao && <Suspense fallback={null}><PostFX profile={profile} /></Suspense>}
       {statsEnabled() && <PerfStats />}

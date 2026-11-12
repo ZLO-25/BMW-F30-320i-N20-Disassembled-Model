@@ -1,0 +1,62 @@
+{
+ "desktop": {
+  "topbar": [
+   1366,
+   49
+  ],
+  "disclaimer": [
+   1366,
+   25
+  ],
+  "viewport": [
+   986,
+   694
+  ],
+  "side": [
+   380,
+   694
+  ],
+  "tabsBar": [
+   379,
+   53
+  ],
+  "buttonsTotal": 217,
+  "buttonsSmall": 6,
+  "tablist": true,
+  "tabCount": 6,
+  "tabsWrapped": 0,
+  "pageScrollX": false
+ },
+ "mobile": {
+  "topbar": [
+   390,
+   61
+  ],
+  "disclaimer": [
+   390,
+   21
+  ],
+  "viewport": [
+   390,
+   458
+  ],
+  "side": [
+   390,
+   304
+  ],
+  "tabsBar": [
+   390,
+   53
+  ],
+  "buttonsTotal": 210,
+  "buttonsSmall": 1,
+  "tablist": true,
+  "tabCount": 6,
+  "tabsWrapped": 0,
+  "pageScrollX": false
+ },
+ "mobileToolsPanel": {
+  "panelH": 275,
+  "viewportH": 458
+ }
+}

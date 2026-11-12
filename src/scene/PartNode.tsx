@@ -187,7 +187,8 @@ export function PartNode({ part, graph, detail, shadows }: Props) {
     s.select(part.id)
     if (mode === 'teardown') s.tryRemove(graph, part.id)
   }
-  const onOver = (e: ThreeEvent<PointerEvent>) => { if (ignoreClicks || removed) return; e.stopPropagation(); useAppStore.getState().hover(part.id); document.body.style.cursor = mode === 'teardown' ? 'grab' : 'pointer' }
+  const onOver = (e: ThreeEvent<PointerEvent>) => { if (ignoreClicks || removed || e.pointerType === 'touch') return;   // E4：觸控沒有「滑鼠掃過」
+     e.stopPropagation(); useAppStore.getState().hover(part.id); document.body.style.cursor = mode === 'teardown' ? 'grab' : 'pointer' }
   const onOut = () => { if (ignoreClicks) return; useAppStore.getState().hover(null); document.body.style.cursor = 'auto' }
 
   return (

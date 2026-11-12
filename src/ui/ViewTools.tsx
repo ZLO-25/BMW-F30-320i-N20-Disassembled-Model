@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { DataBundle } from '../core/loadData'
-import { t, ui, fmt, SUBSYSTEM_NAMES, type UiKey } from '../core/i18n'
+import { t, ui, fmt, SUBSYSTEM_NAMES, SYSTEM_NAMES, type UiKey } from '../core/i18n'
 import { useAppStore, PAINT_KEYS, type SysVis } from '../store/useAppStore'
 
 const SECTION_RANGE = { x: [0.5, 2.3], z: [-0.55, 0.55] } as const
@@ -30,11 +30,16 @@ export function ViewTools({ data }: { data: DataBundle }) {
   const qLocked = useAppStore(s => s.qualityLocked)
   const setQMode = useAppStore(s => s.setQualityMode)
 
-  const subs = useMemo(() => {
-    const seen = new Set<string>()
-    // 用過濾後的圖，手排模式就不會列出自排的子系統
-    for (const p of data.graph.byId.values()) if (p.subsystem !== 'root' && p.system !== 'body') seen.add(p.subsystem)
-    return [...seen]
+  // E5：系統清單依大系統分組、可收合（預設只展開引擎），不然 20 多列平面列表在手機上會蓋住整個畫面
+  const { subs, groups } = useMemo(() => {
+    const bySys = new Map<string, string[]>()
+    for (const p of data.graph.byId.values()) {
+      if (p.subsystem === 'root' || p.system === 'body') continue
+      const arr = bySys.get(p.system) ?? []
+      if (!arr.includes(p.subsystem)) arr.push(p.subsystem)
+      bySys.set(p.system, arr)
+    }
+    return { subs: [...bySys.values()].flat(), groups: [...bySys.entries()] }
   }, [data.graph])
 
   if (!open) return <button className="tools-fab" onClick={() => setOpen(true)}>🛠 {ui('viewTools', lang)}</button>
@@ -98,20 +103,25 @@ export function ViewTools({ data }: { data: DataBundle }) {
       </div>
       <p className="muted small tools-note">{fmt(ui('qualityNow', lang), { n: qLevel })}</p>
       <div className="row"><span>{ui('systems', lang)}</span><button className="link" onClick={() => isolate(null, subs)}>{ui('showAll', lang)}</button></div>
-      <ul className="sys-list">
-        {subs.map(sub => {
-          const v = sysVis[sub] ?? 'show'
-          return (
-            <li key={sub}>
-              <span>{t(SUBSYSTEM_NAMES[sub] ?? { zh: sub, en: sub }, lang)}</span>
-              <button className={`vis vis-${v}`} onClick={() => setSysVis(sub, cycle[(cycle.indexOf(v) + 1) % 3])}>
-                {ui(v === 'show' ? 'visShow' : v === 'ghost' ? 'visGhost' : 'visHide', lang)}
-              </button>
-              <button className="link" onClick={() => isolate(sub, subs)}>{ui('isolate', lang)}</button>
-            </li>
-          )
-        })}
-      </ul>
+      {groups.map(([sys, list]) => (
+        <details key={sys} className="sys-group" open={sys === 'engine'}>
+          <summary>{t(SYSTEM_NAMES[sys] ?? { zh: sys, en: sys }, lang)} <span className="muted small">({list.length})</span></summary>
+          <ul className="sys-list">
+            {list.map(sub => {
+              const v = sysVis[sub] ?? 'show'
+              return (
+                <li key={sub}>
+                  <span>{t(SUBSYSTEM_NAMES[sub] ?? { zh: sub, en: sub }, lang)}</span>
+                  <button className={`vis vis-${v}`} onClick={() => setSysVis(sub, cycle[(cycle.indexOf(v) + 1) % 3])}>
+                    {ui(v === 'show' ? 'visShow' : v === 'ghost' ? 'visGhost' : 'visHide', lang)}
+                  </button>
+                  <button className="link" onClick={() => isolate(sub, subs)}>{ui('isolate', lang)}</button>
+                </li>
+              )
+            })}
+          </ul>
+        </details>
+      ))}
     </div>
   )
 }

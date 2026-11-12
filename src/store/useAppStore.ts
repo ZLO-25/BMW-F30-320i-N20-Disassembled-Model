@@ -68,6 +68,12 @@ interface AppState {
   setEngineSlow: (v: boolean) => void
   /** 鏡頭對準：改 token 讓 Scene 把鏡頭移到 target */
   focus: { target: [number, number, number]; dist: number; token: number } | null
+  /** E5：「看這個零件」：Scene 依該零件的世界包圍盒算鏡頭位置 */
+  focusPartReq: { id: string; token: number } | null
+  focusPart: (id: string) => void
+  /** E5：第一次使用引導是否已看過 */
+  onboarded: boolean
+  setOnboarded: () => void
   selectedId: string | null
   hoveredId: string | null
   expanded: Set<string>
@@ -219,6 +225,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   engineSlow: true,
   setEngineSlow: (engineSlow) => set({ engineSlow }),
   focus: null,
+  focusPartReq: null,
+  onboarded: safeGet('n20.onboard.v1') === '1',
   selectedId: null,
   hoveredId: null,
   expanded: new Set<string>(['car.root', 'eng.assembly', 'eng.head.cylinder_head']),
@@ -230,7 +238,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   cameraResetToken: 0,
   aboutOpen: false,
 
-  mode: 'teardown',
+  // E5：預設「檢視」。新手第一下點擊應該是「看資訊」，不是把零件拆掉
+  mode: 'inspect',
   teardown: emptyTeardown(),
   removedIds: new Set(),
   history: [],
@@ -287,6 +296,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setAnimT: (animT) => set({ animT }),
   setGear: (gear) => set({ gear }),
   setAnimPlaying: (animPlaying) => set({ animPlaying }),
+  focusPart: (id) => set((s) => ({ focusPartReq: { id, token: (s.focusPartReq?.token ?? 0) + 1 } })),
+  setOnboarded: () => { safeSet('n20.onboard.v1', '1'); set({ onboarded: true }) },
   focusOn: (target, dist = 1.2) => set((s) => ({ focus: { target, dist, token: (s.focus?.token ?? 0) + 1 } })),
   select: (id) => set(() => {
     // 選到零件時，手機抽屜切到資訊頁

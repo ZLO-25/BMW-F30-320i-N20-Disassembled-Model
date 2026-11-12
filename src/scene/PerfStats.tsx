@@ -1,3 +1,4 @@
+import * as THREE from 'three'
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 
@@ -16,7 +17,7 @@ export function percentile(sorted: number[], p: number): number {
 }
 
 export function PerfStats() {
-  const { gl, scene, camera, controls } = useThree()
+  const { gl, scene, camera, controls, raycaster } = useThree()
   const box = useRef<HTMLDivElement | null>(null)
   const acc = useRef({ frames: 0, time: 0 })
 
@@ -37,6 +38,19 @@ export function PerfStats() {
       if (c) { c.target.set(tx, ty, tz); c.update() } else camera.lookAt(tx, ty, tz)
     }
   }, [camera, controls])
+  useEffect(() => {
+    // E4：量「射線檢查」一次多久。pick(nx, ny, n) 回傳 n 次的平均毫秒與命中的零件數（自動測試用）
+    ;(window as unknown as { __n20pick: unknown }).__n20pick = (nx = 0, ny = 0, n = 20) => {
+      const rc = new THREE.Raycaster(); rc.firstHitOnly = (raycaster as unknown as { firstHitOnly?: boolean }).firstHitOnly
+      let hits = 0
+      const t0 = performance.now()
+      for (let i = 0; i < n; i++) {
+        rc.setFromCamera(new THREE.Vector2(nx + (i % 5) * 0.03, ny + (i % 3) * 0.03), camera)
+        hits += rc.intersectObjects(scene.children, true).length
+      }
+      return { ms: (performance.now() - t0) / n, hits: hits / n }
+    }
+  }, [scene, camera, raycaster])
   useEffect(() => {
     const div = document.createElement('div')
     div.className = 'perf-stats'

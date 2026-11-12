@@ -7,11 +7,35 @@
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { useGLTF } from '@react-three/drei'
+import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh'
 import { getProcedural, mergeStaticMeshes, M, type Detail } from './procedural'
 import { presetForMaterial } from './procedural/materialMatch'
 
 // ?merge=0 關掉合併網格（除錯、比較效能用）
 const MERGE = typeof location === 'undefined' || new URLSearchParams(location.search).get('merge') !== '0'
+
+// E4：射線加速。滑鼠每動一下 R3F 都要問「射線打到哪個零件」，沒有加速結構時是對 60 萬個三角形逐一比對（實測約 16 ms）。
+// 給每個夠大的 mesh 建一棵 BVH，查詢變成對數時間。?bvh=0 可以關掉（比較前後用）。
+const BVH = typeof location === 'undefined' || new URLSearchParams(location.search).get('bvh') !== '0'
+type BvhGeometry = THREE.BufferGeometry & { computeBoundsTree?: () => void; disposeBoundsTree?: () => void }
+const BVH_MIN_TRIANGLES = 100
+export const bvhStats = { built: 0, ms: 0 }
+function buildBounds(root: THREE.Object3D) {
+  const t0 = performance.now()
+  root.traverse((o) => {
+    const m = o as THREE.Mesh
+    if (!m.isMesh) return
+    const g = m.geometry as BvhGeometry
+    const tris = (g.index ? g.index.count : g.attributes.position.count) / 3
+    if (tris < BVH_MIN_TRIANGLES) return
+    ;(g as unknown as { computeBoundsTree: typeof computeBoundsTree }).computeBoundsTree = computeBoundsTree
+    ;(g as unknown as { disposeBoundsTree: typeof disposeBoundsTree }).disposeBoundsTree = disposeBoundsTree
+    g.computeBoundsTree?.()
+    m.raycast = acceleratedRaycast
+    bvhStats.built++
+  })
+  bvhStats.ms += performance.now() - t0
+}
 
 export function parseModelRef(ref: string): { kind: 'procedural'; name: string } | { kind: 'glb'; url: string; node?: string } {
   if (ref.startsWith('procedural:')) return { kind: 'procedural', name: ref.slice('procedural:'.length) }
@@ -31,6 +55,7 @@ export function disposeObject(root: THREE.Object3D) {
   root.traverse((o) => {
     const m = o as THREE.Mesh
     if (!m.isMesh) return
+    ;(m.geometry as BvhGeometry | undefined)?.disposeBoundsTree?.()
     m.geometry?.dispose()
     for (const mm of Array.isArray(m.material) ? m.material : [m.material]) mm?.dispose()
   })
@@ -45,6 +70,7 @@ export function useProceduralObject(name: string, detail: Detail): THREE.Group {
     }
     const obj = gen(detail)
     if (MERGE) mergeStaticMeshes(obj)
+    if (BVH) buildBounds(obj)
     return obj
   }, [name, detail])
 }
