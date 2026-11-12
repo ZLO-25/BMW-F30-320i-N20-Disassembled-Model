@@ -97,6 +97,11 @@ async function main() {
         dts.shift(); dts.sort((x, y) => x - y)
         return { frames: dts.length, p50: Math.round(dts[Math.floor(dts.length / 2)]), p95: Math.round(dts[Math.floor(dts.length * 0.95)]) }
       })
+      run.callsMinAfterMoving = (await read()).callsMin
+      // BVH 建樹在閒置時分批做，等它做完再量射線
+      await page.waitForFunction(() => window.__n20bvh && window.__n20bvh.queued === 0, null, { timeout: 120000 }).catch(() => {})
+      // E4：一次射線檢查多久（BVH 開 / 關比較在檔案最後；這裡記目前設定的值與建樹時間）
+      run.pickMs = await page.evaluate(() => ({ ...window.__n20pick(-0.1, -0.05, 30), bvh: window.__n20bvh }))
       // F11：鏡頭拉近前後的著色器程式數
       await page.evaluate(() => window.__n20cam(1.15 + 3.0, 1.2, 2.0, 1.15, 0.55, 0)); await sleep(2500)
       const far = await read()
@@ -113,6 +118,17 @@ async function main() {
       }
       result.runs[q] = run
       console.log(q, JSON.stringify(run))
+      await ctx.close()
+    }
+    // E4：BVH 關閉（?bvh=0）時的射線檢查，拿來和上面比
+    if (!process.env.PERF_SKIP_BVH0) {
+      const ctx = await browser.newContext({ viewport: { width: 1000, height: 640 } })
+      const page = await ctx.newPage(); page.setDefaultTimeout(180000)
+      await page.goto(`http://localhost:${PORT}/?stats=1&level=1&bvh=0`, { waitUntil: 'load' })
+      await page.waitForFunction(() => window.__n20perf, null, { timeout: 180000 })
+      await sleep(3000)
+      result.pickNoBvh = await page.evaluate(() => ({ ...window.__n20pick(-0.1, -0.05, 30), bvh: window.__n20bvh }))
+      console.log('pick without BVH', JSON.stringify(result.pickNoBvh))
       await ctx.close()
     }
     await browser.close()

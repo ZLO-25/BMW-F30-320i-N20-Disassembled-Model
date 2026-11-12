@@ -1,5 +1,5 @@
 {
- "when": "2026-11-12T06:18:55.644Z",
+ "when": "2026-11-12T07:13:47.636Z",
  "chunks": {
   "CompareView": {
    "rawKB": 4,
@@ -13,133 +13,191 @@
    "rawKB": 4,
    "gzipKB": 1
   },
+  "PostFX": {
+   "rawKB": 0,
+   "gzipKB": 0
+  },
   "index": {
-   "rawKB": 511,
-   "gzipKB": 155
+   "rawKB": 438,
+   "gzipKB": 133
+  },
+  "learnData": {
+   "rawKB": 114,
+   "gzipKB": 39
+  },
+  "postfx": {
+   "rawKB": 232,
+   "gzipKB": 100
   },
   "three": {
    "rawKB": 737,
    "gzipKB": 190
   },
+  "useFullData": {
+   "rawKB": 0,
+   "gzipKB": 0
+  },
   "vendor": {
-   "rawKB": 810,
-   "gzipKB": 277
+   "rawKB": 616,
+   "gzipKB": 190
   }
  },
  "runs": {
   "high": {
-   "msToStats": 11331,
+   "msToStats": 13949,
    "fps": 0,
-   "calls": 1630,
-   "triangles": 2605876,
-   "geometries": 416,
+   "calls": 1422,
+   "callsMin": 1,
+   "triangles": 2159098,
+   "geometries": 460,
    "dpr": 1,
-   "frameMsP50": 3284.8,
-   "frameMsP95": 9970.3,
-   "programs": 35,
-   "textures": 45,
-   "renders": 4,
-   "heapMB": 80,
+   "frameMsP50": 19.7,
+   "frameMsP95": 19.7,
+   "programs": 54,
+   "textures": 43,
+   "renders": 3,
+   "heapMB": 99,
    "longTasks": {
-    "count": 8,
-    "longestMs": 9962
+    "count": 10,
+    "longestMs": 9324
    },
    "scene": {
-    "meshes": 412,
-    "triangles": 665862
+    "meshes": 457,
+    "triangles": 704412
    },
-   "idleRendersIn3s": 2,
+   "idleRendersIn3s": 0,
    "moving": {
-    "frames": 3,
-    "p50": 2117,
-    "p95": 2150
+    "frames": 4,
+    "p50": 2250,
+    "p95": 2333
+   },
+   "callsMinAfterMoving": 1,
+   "pickMs": {
+    "ms": 2.65,
+    "hits": 20.2,
+    "bvh": {
+     "built": 446,
+     "ms": 291.39999999897555,
+     "queued": 0
+    }
    },
    "zoomIn": {
-    "programsFar": 35,
-    "programsNear": 52
+    "programsFar": 54,
+    "programsNear": 54
    },
    "switch6": {
-    "texturesBefore": 45,
-    "texturesAfter": 69,
-    "geometriesBefore": 416,
-    "geometriesAfter": 428
+    "texturesBefore": 43,
+    "texturesAfter": 43,
+    "geometriesBefore": 460,
+    "geometriesAfter": 460
    }
   },
   "mid": {
-   "msToStats": 9863,
-   "fps": 2,
-   "calls": 405,
-   "triangles": 228309,
-   "geometries": 415,
+   "msToStats": 7266,
+   "fps": 3,
+   "calls": 451,
+   "callsMin": 1,
+   "triangles": 246240,
+   "geometries": 441,
    "dpr": 1,
-   "frameMsP50": 721.6,
-   "frameMsP95": 6308.5,
-   "programs": 32,
-   "textures": 29,
-   "renders": 10,
-   "heapMB": 53,
+   "frameMsP50": 322.9,
+   "frameMsP95": 389.2,
+   "programs": 23,
+   "textures": 11,
+   "renders": 5,
+   "heapMB": 59,
    "longTasks": {
-    "count": 14,
-    "longestMs": 6302
+    "count": 10,
+    "longestMs": 3007
    },
    "scene": {
-    "meshes": 411,
-    "triangles": 223230
+    "meshes": 440,
+    "triangles": 238824
    },
-   "idleRendersIn3s": 5,
+   "idleRendersIn3s": 0,
    "moving": {
-    "frames": 12,
-    "p50": 567,
-    "p95": 600
+    "frames": 18,
+    "p50": 367,
+    "p95": 417
+   },
+   "callsMinAfterMoving": 451,
+   "pickMs": {
+    "ms": 0.7299999999968956,
+    "hits": 10.466666666666667,
+    "bvh": {
+     "built": 324,
+     "ms": 90.29999999934807,
+     "queued": 0
+    }
    },
    "zoomIn": {
-    "programsFar": 32,
-    "programsNear": 49
+    "programsFar": 23,
+    "programsNear": 23
    },
    "switch6": {
-    "texturesBefore": 29,
-    "texturesAfter": 53,
-    "geometriesBefore": 415,
-    "geometriesAfter": 427
+    "texturesBefore": 11,
+    "texturesAfter": 11,
+    "geometriesBefore": 441,
+    "geometriesAfter": 441
    }
   },
   "low": {
-   "msToStats": 6374,
+   "msToStats": 6765,
    "fps": 4,
-   "calls": 372,
-   "triangles": 76270,
-   "geometries": 370,
+   "calls": 447,
+   "callsMin": 1,
+   "triangles": 88546,
+   "geometries": 437,
    "dpr": 1,
-   "frameMsP50": 278.1,
-   "frameMsP95": 467.1,
-   "programs": 18,
+   "frameMsP50": 283,
+   "frameMsP95": 283,
+   "programs": 19,
    "textures": 9,
-   "renders": 22,
-   "heapMB": 45,
+   "renders": 3,
+   "heapMB": 35,
    "longTasks": {
-    "count": 27,
-    "longestMs": 4717
+    "count": 10,
+    "longestMs": 3452
    },
    "scene": {
-    "meshes": 408,
-    "triangles": 79620
+    "meshes": 436,
+    "triangles": 85898
    },
-   "idleRendersIn3s": 12,
+   "idleRendersIn3s": 0,
    "moving": {
-    "frames": 25,
-    "p50": 233,
-    "p95": 300
+    "frames": 21,
+    "p50": 300,
+    "p95": 350
+   },
+   "callsMinAfterMoving": 447,
+   "pickMs": {
+    "ms": 1.15,
+    "hits": 8.533333333333333,
+    "bvh": {
+     "built": 269,
+     "ms": 34.60000000009313,
+     "queued": 0
+    }
    },
    "zoomIn": {
-    "programsFar": 18,
-    "programsNear": 35
+    "programsFar": 19,
+    "programsNear": 19
    },
    "switch6": {
     "texturesBefore": 9,
     "texturesAfter": 9,
-    "geometriesBefore": 409,
-    "geometriesAfter": 409
+    "geometriesBefore": 437,
+    "geometriesAfter": 437
    }
+  }
+ },
+ "pickNoBvh": {
+  "ms": 3.7133333333302287,
+  "hits": 4.466666666666667,
+  "bvh": {
+   "built": 0,
+   "ms": 0,
+   "queued": 0
   }
  }
 }

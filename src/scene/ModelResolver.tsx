@@ -19,22 +19,45 @@ const MERGE = typeof location === 'undefined' || new URLSearchParams(location.se
 const BVH = typeof location === 'undefined' || new URLSearchParams(location.search).get('bvh') !== '0'
 type BvhGeometry = THREE.BufferGeometry & { computeBoundsTree?: () => void; disposeBoundsTree?: () => void }
 const BVH_MIN_TRIANGLES = 100
-export const bvhStats = { built: 0, ms: 0 }
-function buildBounds(root: THREE.Object3D) {
+export const bvhStats = { built: 0, ms: 0, queued: 0 }
+
+/**
+ * 建樹很貴（high 約 250 ms，全部同步做會讓載入多卡一下），所以排隊、在瀏覽器閒的時候每次做一小段（約 6 ms）。
+ * 還沒輪到的 mesh 用原本的逐三角形檢查，行為一樣、只是慢一點，所以任何時候都正確。
+ */
+const queue: THREE.Mesh[] = []
+let scheduled = false
+const idle: (cb: () => void) => void = typeof requestIdleCallback === 'function' ? (cb) => requestIdleCallback(cb, { timeout: 500 }) : (cb) => setTimeout(cb, 16)
+function buildOne(m: THREE.Mesh) {
+  const g = m.geometry as BvhGeometry
+  if (!g || (g as { boundsTree?: unknown }).boundsTree) return
+  ;(g as unknown as { computeBoundsTree: typeof computeBoundsTree }).computeBoundsTree = computeBoundsTree
+  ;(g as unknown as { disposeBoundsTree: typeof disposeBoundsTree }).disposeBoundsTree = disposeBoundsTree
+  g.computeBoundsTree?.()
+  m.raycast = acceleratedRaycast
+  bvhStats.built++
+}
+function pump() {
+  scheduled = false
   const t0 = performance.now()
+  while (queue.length && performance.now() - t0 < 6) {
+    const m = queue.shift()!
+    if (m.geometry && (m.userData.disposed !== true)) buildOne(m)
+  }
+  bvhStats.ms += performance.now() - t0
+  bvhStats.queued = queue.length
+  if (queue.length) { scheduled = true; idle(pump) }
+}
+function buildBounds(root: THREE.Object3D) {
   root.traverse((o) => {
     const m = o as THREE.Mesh
     if (!m.isMesh) return
     const g = m.geometry as BvhGeometry
     const tris = (g.index ? g.index.count : g.attributes.position.count) / 3
-    if (tris < BVH_MIN_TRIANGLES) return
-    ;(g as unknown as { computeBoundsTree: typeof computeBoundsTree }).computeBoundsTree = computeBoundsTree
-    ;(g as unknown as { disposeBoundsTree: typeof disposeBoundsTree }).disposeBoundsTree = disposeBoundsTree
-    g.computeBoundsTree?.()
-    m.raycast = acceleratedRaycast
-    bvhStats.built++
+    if (tris >= BVH_MIN_TRIANGLES) queue.push(m)
   })
-  bvhStats.ms += performance.now() - t0
+  bvhStats.queued = queue.length
+  if (!scheduled && queue.length) { scheduled = true; idle(pump) }
 }
 
 export function parseModelRef(ref: string): { kind: 'procedural'; name: string } | { kind: 'glb'; url: string; node?: string } {
@@ -55,6 +78,7 @@ export function disposeObject(root: THREE.Object3D) {
   root.traverse((o) => {
     const m = o as THREE.Mesh
     if (!m.isMesh) return
+    m.userData.disposed = true   // 還在 BVH 建樹排隊的就跳過
     ;(m.geometry as BvhGeometry | undefined)?.disposeBoundsTree?.()
     m.geometry?.dispose()
     for (const mm of Array.isArray(m.material) ? m.material : [m.material]) mm?.dispose()

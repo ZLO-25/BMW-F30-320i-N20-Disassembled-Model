@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
+import { bvhStats } from './ModelResolver'
 
 /**
  * 效能小面板：網址加 ?stats=1 才會出現（P7 驗收「中階手機 30 fps」用）。
@@ -40,6 +41,7 @@ export function PerfStats() {
   }, [camera, controls])
   useEffect(() => {
     // E4：量「射線檢查」一次多久。pick(nx, ny, n) 回傳 n 次的平均毫秒與命中的零件數（自動測試用）
+    ;(window as unknown as { __n20bvh: unknown }).__n20bvh = bvhStats
     ;(window as unknown as { __n20pick: unknown }).__n20pick = (nx = 0, ny = 0, n = 20) => {
       const rc = new THREE.Raycaster(); rc.firstHitOnly = (raycaster as unknown as { firstHitOnly?: boolean }).firstHitOnly
       let hits = 0
@@ -85,8 +87,8 @@ export function PerfStats() {
   useFrame((_, dt) => {
     last.current = { calls: gl.info.render.calls, triangles: gl.info.render.triangles }
     gl.info.reset()
-    callsRing.current.push(last.current.calls); if (callsRing.current.length > 20) callsRing.current.shift()
     total.current++
+    if (total.current > 3) { callsRing.current.push(last.current.calls); if (callsRing.current.length > 20) callsRing.current.shift() }   // 開頭幾格 info 還沒有上一格的數字
     ;(window as unknown as { __n20frames: number }).__n20frames = total.current   // 每格更新，閒置測試讀這個
     lastFrameAt.current = performance.now()
     // 兩格之間隔了 1.5 秒以上 = 中間閒置過（按需渲染），那段不算「每格耗時」（軟體繪圖下真的有一格 1 秒多的，所以門檻不能太低）
@@ -97,10 +99,12 @@ export function PerfStats() {
     const fps = a.time > 0 ? a.frames / a.time : 0
     a.frames = 0; a.time = 0
     const { triangles } = last.current
-    const calls = percentile([...callsRing.current].sort((x, y) => x - y), 0.5)
+    const callsSorted = [...callsRing.current].sort((x, y) => x - y)
+    const calls = percentile(callsSorted, 0.5)
+    const callsMin = callsSorted.find(c => c > 50) ?? 0   // 最便宜的一格 = 沒有陰影圖／接觸陰影多畫一遍的「普通格」（轉鏡頭時就是這個）
     const sorted = [...ring.current].sort((x, y) => x - y)
     const out = {
-      fps: Math.round(fps), calls, triangles, geometries: gl.info.memory.geometries, dpr: gl.getPixelRatio(),
+      fps: Math.round(fps), calls, callsMin, triangles, geometries: gl.info.memory.geometries, dpr: gl.getPixelRatio(),
       // E0：每格毫秒中位數 / P95、著色器程式數、貼圖數、累計畫了幾格
       frameMsP50: +percentile(sorted, 0.5).toFixed(1), frameMsP95: +percentile(sorted, 0.95).toFixed(1),
       programs: gl.info.programs?.length ?? 0, textures: gl.info.memory.textures, renders: total.current,
