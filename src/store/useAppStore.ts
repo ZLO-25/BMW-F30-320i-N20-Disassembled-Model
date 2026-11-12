@@ -1,3 +1,5 @@
+import { QUALITY_KEY, initialQuality, parseSaved, modeLevel, guessLevel, stepDown, levelFromUrl, type Level, type QualityMode } from '../core/quality'
+import { isMobileDevice, probeGpuRenderer } from './device'
 import { create } from 'zustand'
 import type { Lang } from '../core/i18n'
 import type { PartGraph, Variant } from '../core/partGraph'
@@ -66,6 +68,12 @@ interface AppState {
   setEngineSlow: (v: boolean) => void
   /** 鏡頭對準：改 token 讓 Scene 把鏡頭移到 target */
   focus: { target: [number, number, number]; dist: number; token: number } | null
+  /** E5：「看這個零件」：Scene 依該零件的世界包圍盒算鏡頭位置 */
+  focusPartReq: { id: string; token: number } | null
+  focusPart: (id: string) => void
+  /** E5：第一次使用引導是否已看過 */
+  onboarded: boolean
+  setOnboarded: () => void
   selectedId: string | null
   hoveredId: string | null
   expanded: Set<string>
@@ -94,6 +102,19 @@ interface AppState {
   paint: PaintKey
   setPaint: (p: PaintKey) => void
 
+  // ── E2 畫質 ──
+  qualityMode: QualityMode
+  /** 目前實際生效的級別（L0–L5，見 core/quality.ts） */
+  qualityLevel: Level
+  /** 網址（?quality= / ?level=）強制指定時為 true：不自動降級 */
+  qualityLocked: boolean
+  /** 是手機 / 平板（裝置偵測，載入時決定一次） */
+  mobile: boolean
+  /** 自動降級時 +1，HintToast 看到就顯示一句說明 */
+  qualityNotice: number
+  /** 後處理（AO）現在有沒有掛：透視模式的透明度補償要跟著切（見 PartNode ghostTuning） */
+  postfx: boolean
+
   // ── P5 ──
   progress: Progress
   /** 手上拿著的工具（InfoCard 可以勾），拆零件時用來判斷有沒有「沒用對工具」的錯誤示範 */
@@ -106,6 +127,10 @@ interface AppState {
   learnLevel: number
   scenario: ScenarioState | null
 
+  setQualityMode: (m: QualityMode) => void
+  /** 自動降級一級；回傳有沒有降成功 */
+  degradeQuality: () => boolean
+  setPostfx: (on: boolean) => void
   setLang: (l: Lang) => void
   setVariant: (v: Variant) => void
   setVariantModalOpen: (o: boolean) => void
@@ -175,6 +200,16 @@ interface AppState {
 const safeGet = (k: string): string | null => { try { return localStorage.getItem(k) } catch { return null } }
 const safeSet = (k: string, v: string) => { try { localStorage.setItem(k, v) } catch { /* 無痕模式等情況，忽略 */ } }
 
+// E2：載入時決定一次畫質起點（網址 > 儲存值 > 猜）
+const DEVICE_MOBILE = isMobileDevice()
+const GPU_RENDERER = DEVICE_MOBILE ? null : probeGpuRenderer()
+const QUALITY_INIT = initialQuality({
+  mobile: DEVICE_MOBILE, cores: navigator.hardwareConcurrency ?? 4,
+  gpuRenderer: GPU_RENDERER,
+  saved: parseSaved(safeGet(QUALITY_KEY)), search: location.search,
+})
+const saveQuality = (mode: QualityMode, level: Level) => safeSet(QUALITY_KEY, JSON.stringify({ mode, level }))
+
 let hintToken = 0
 const mkHint = (kind: Hint['kind'], target: string, ids: string[] = []): Hint => ({ kind, target, ids, token: ++hintToken })
 
@@ -190,6 +225,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   engineSlow: true,
   setEngineSlow: (engineSlow) => set({ engineSlow }),
   focus: null,
+  focusPartReq: null,
+  onboarded: safeGet('n20.onboard.v1') === '1',
   selectedId: null,
   hoveredId: null,
   expanded: new Set<string>(['car.root', 'eng.assembly', 'eng.head.cylinder_head']),
@@ -201,7 +238,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   cameraResetToken: 0,
   aboutOpen: false,
 
-  mode: 'teardown',
+  // E5：預設「檢視」。新手第一下點擊應該是「看資訊」，不是把零件拆掉
+  mode: 'inspect',
   teardown: emptyTeardown(),
   removedIds: new Set(),
   history: [],
@@ -215,6 +253,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   toolsOpen: false,
   stage: safeGet('n20.stage.v1') === 'studio' ? 'studio' : 'workshop',
   paint: (PAINT_KEYS as readonly string[]).includes(safeGet('n20.paint.v1') ?? '') ? safeGet('n20.paint.v1') as PaintKey : 'zl_white',
+  qualityMode: QUALITY_INIT.mode,
+  qualityLevel: QUALITY_INIT.level,
+  qualityLocked: levelFromUrl(location.search) !== null,
+  mobile: DEVICE_MOBILE,
+  qualityNotice: 0,
+  postfx: false,
 
   progress: loadProgress(),
   toolsInHand: new Set(),
@@ -224,6 +268,22 @@ export const useAppStore = create<AppState>((set, get) => ({
   learnLevel: 1,
   scenario: null,
 
+  setQualityMode: (mode) => {
+    const mobile = get().mobile
+    const level = modeLevel(mode, mobile, guessLevel(mobile, navigator.hardwareConcurrency ?? 4, GPU_RENDERER))
+    saveQuality(mode, level)
+    set({ qualityMode: mode, qualityLevel: level, qualityLocked: false })
+  },
+  degradeQuality: () => {
+    const s = get()
+    if (s.qualityMode !== 'auto' || s.qualityLocked) return false
+    const next = stepDown(s.qualityLevel)
+    if (next === null) return false
+    saveQuality('auto', next)
+    set({ qualityLevel: next, qualityNotice: s.qualityNotice + 1 })
+    return true
+  },
+  setPostfx: (postfx) => set({ postfx }),
   setLang: (lang) => { safeSet('n20.lang', lang); set({ lang }) },
   /** 換變速箱 = 換一個世界：托盤、歷史、選取全部歸零 */
   setVariant: (variant) => {
@@ -236,6 +296,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setAnimT: (animT) => set({ animT }),
   setGear: (gear) => set({ gear }),
   setAnimPlaying: (animPlaying) => set({ animPlaying }),
+  focusPart: (id) => set((s) => ({ focusPartReq: { id, token: (s.focusPartReq?.token ?? 0) + 1 } })),
+  setOnboarded: () => { safeSet('n20.onboard.v1', '1'); set({ onboarded: true }) },
   focusOn: (target, dist = 1.2) => set((s) => ({ focus: { target, dist, token: (s.focus?.token ?? 0) + 1 } })),
   select: (id) => set(() => {
     // 選到零件時，手機抽屜切到資訊頁

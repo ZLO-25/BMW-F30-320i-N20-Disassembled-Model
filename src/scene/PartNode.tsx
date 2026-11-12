@@ -5,6 +5,7 @@ import { useShallow } from 'zustand/react/shallow'
 import type { Part } from '../core/schema'
 import type { PartGraph } from '../core/partGraph'
 import { useAppStore, type SysVis, type Stage } from '../store/useAppStore'
+import { redraw } from './redraw'
 import { parseModelRef, useProceduralObject, disposeObject, GlbObject } from './ModelResolver'
 import type { Detail } from './procedural'
 
@@ -99,7 +100,7 @@ export function PartNode({ part, graph, detail, shadows }: Props) {
   const ref = useRef<THREE.Group>(null)
   // 審查 S5：一個節點只訂閱一次（useShallow），不要 11 個 selector；163 個零件 × 11 = 1,800 個 listener，
   // 滑鼠掃過零件時每次 hover() 都要跑完它們。hint 只取「有沒有擋到我」的 token，不訂閱整個物件。
-  const { selected, hovered, removed, parentRemoved, blockedToken, bodyMode, sysVis, mode, shellGhost, stage } = useAppStore(useShallow(s => ({
+  const { selected, hovered, removed, parentRemoved, blockedToken, bodyMode, sysVis, mode, shellGhost, stage, postfx } = useAppStore(useShallow(s => ({
     selected: s.selectedId === part.id,
     hovered: s.hoveredId === part.id,
     removed: s.removedIds.has(part.id),
@@ -110,6 +111,7 @@ export function PartNode({ part, graph, detail, shadows }: Props) {
     mode: s.mode,
     shellGhost: s.anim !== null,
     stage: s.stage,
+    postfx: s.postfx,   // E2：AO 開關改變時，透視的透明度倍率（ghostTuning）要重套
   })))
   const registry = useContext(PartRegistryCtx)
   const children = graph.children.get(part.id) ?? []
@@ -133,10 +135,10 @@ export function PartNode({ part, graph, detail, shadows }: Props) {
   const lookRef = useRef(look); lookRef.current = look
   const visRef = useRef(vis); visRef.current = vis
 
-  useEffect(() => { if (modelHolder.current) applyHighlight(modelHolder.current, look) }, [look.color, look.intensity]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (modelHolder.current) applyVisibility(modelHolder.current, vis, ghostOpacityFor(isBody, stage), shellGhost) }, [vis, isBody, shellGhost, stage])
+  useEffect(() => { if (modelHolder.current) { applyHighlight(modelHolder.current, look); redraw() } }, [look.color, look.intensity]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (modelHolder.current) { applyVisibility(modelHolder.current, vis, ghostOpacityFor(isBody, stage), shellGhost); redraw(true) } }, [vis, isBody, shellGhost, stage, postfx])
   useEffect(() => () => { registry.delete(part.id) }, [registry, part.id])
-  useEffect(() => { if (modelHolder.current) applyShadows(modelHolder.current, shadows && !isBody) }, [shadows, isBody])
+  useEffect(() => { if (modelHolder.current) { applyShadows(modelHolder.current, shadows && !isBody); redraw(true) } }, [shadows, isBody])
 
   const onReady = (o: THREE.Object3D) => {
     modelHolder.current = o
@@ -171,9 +173,11 @@ export function PartNode({ part, graph, detail, shadows }: Props) {
     if (d2 > 1e-10) {
       if (d2 < 1e-7 && a.fly === goal) g.position.copy(target)
       else g.position.lerp(target, Math.min(1, dt * 8))
+      redraw(true)   // E1：還在動 → 下一格也要畫（按需渲染）；動到的零件陰影也要更新
     }
     const visible = !(removed && (parentRemoved || a.fly > 0.97))
-    if (g.visible !== visible) g.visible = visible
+    if (g.visible !== visible) { g.visible = visible; redraw(true) }
+    if (a.fly !== goal) redraw(true)
   })
 
   const onClick = (e: ThreeEvent<MouseEvent>) => {
@@ -183,7 +187,8 @@ export function PartNode({ part, graph, detail, shadows }: Props) {
     s.select(part.id)
     if (mode === 'teardown') s.tryRemove(graph, part.id)
   }
-  const onOver = (e: ThreeEvent<PointerEvent>) => { if (ignoreClicks || removed) return; e.stopPropagation(); useAppStore.getState().hover(part.id); document.body.style.cursor = mode === 'teardown' ? 'grab' : 'pointer' }
+  const onOver = (e: ThreeEvent<PointerEvent>) => { if (ignoreClicks || removed || e.pointerType === 'touch') return;   // E4：觸控沒有「滑鼠掃過」
+     e.stopPropagation(); useAppStore.getState().hover(part.id); document.body.style.cursor = mode === 'teardown' ? 'grab' : 'pointer' }
   const onOut = () => { if (ignoreClicks) return; useAppStore.getState().hover(null); document.body.style.cursor = 'auto' }
 
   return (

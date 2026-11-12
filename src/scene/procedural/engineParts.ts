@@ -313,9 +313,10 @@ registerProcedural('valve_set_v1', (d) => {
   const g = new THREE.Group()
   const helix = (r: number, h: number, turns: number) => {
     const pts: [number, number, number][] = []
-    const n = segs(d, 60, 30, 12)
+    const n = segs(d, 36, 30, 12)
     for (let i = 0; i <= n; i++) { const a = (i / n) * turns * Math.PI * 2; pts.push([Math.cos(a) * r, (i / n) * h - h / 2, Math.sin(a) * r]) }
-    return tube(d, pts, 0.0012)
+    // E6：氣門彈簧線徑 1.2 mm、整組藏在缸頭裡，不需要 96 段 × 12 邊的細管（以前 16 支共約 3.7 萬個三角形，全車最多的零件）
+    return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)), false, 'catmullrom', 0.3), segs(d, 72, 48, 20), 0.0012, segs(d, 5, 5, 4), false)
   }
   const springGeo = d === 'low' ? cylY(d, 0.009, 0.028) : helix(0.0085, 0.028, 6)
   // R4：每缸的進氣門（vi_i，-Z 側）與排氣門（ve_i，+Z 側）各成一組，運轉動畫把它們往下推開

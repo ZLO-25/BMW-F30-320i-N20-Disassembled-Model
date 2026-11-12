@@ -1,0 +1,203 @@
+{
+ "when": "2026-11-12T07:13:47.636Z",
+ "chunks": {
+  "CompareView": {
+   "rawKB": 4,
+   "gzipKB": 2
+  },
+  "LearnPanel": {
+   "rawKB": 17,
+   "gzipKB": 5
+  },
+  "MaintenancePanel": {
+   "rawKB": 4,
+   "gzipKB": 1
+  },
+  "PostFX": {
+   "rawKB": 0,
+   "gzipKB": 0
+  },
+  "index": {
+   "rawKB": 438,
+   "gzipKB": 133
+  },
+  "learnData": {
+   "rawKB": 114,
+   "gzipKB": 39
+  },
+  "postfx": {
+   "rawKB": 232,
+   "gzipKB": 100
+  },
+  "three": {
+   "rawKB": 737,
+   "gzipKB": 190
+  },
+  "useFullData": {
+   "rawKB": 0,
+   "gzipKB": 0
+  },
+  "vendor": {
+   "rawKB": 616,
+   "gzipKB": 190
+  }
+ },
+ "runs": {
+  "high": {
+   "msToStats": 13949,
+   "fps": 0,
+   "calls": 1422,
+   "callsMin": 1,
+   "triangles": 2159098,
+   "geometries": 460,
+   "dpr": 1,
+   "frameMsP50": 19.7,
+   "frameMsP95": 19.7,
+   "programs": 54,
+   "textures": 43,
+   "renders": 3,
+   "heapMB": 99,
+   "longTasks": {
+    "count": 10,
+    "longestMs": 9324
+   },
+   "scene": {
+    "meshes": 457,
+    "triangles": 704412
+   },
+   "idleRendersIn3s": 0,
+   "moving": {
+    "frames": 4,
+    "p50": 2250,
+    "p95": 2333
+   },
+   "callsMinAfterMoving": 1,
+   "pickMs": {
+    "ms": 2.65,
+    "hits": 20.2,
+    "bvh": {
+     "built": 446,
+     "ms": 291.39999999897555,
+     "queued": 0
+    }
+   },
+   "zoomIn": {
+    "programsFar": 54,
+    "programsNear": 54
+   },
+   "switch6": {
+    "texturesBefore": 43,
+    "texturesAfter": 43,
+    "geometriesBefore": 460,
+    "geometriesAfter": 460
+   }
+  },
+  "mid": {
+   "msToStats": 7266,
+   "fps": 3,
+   "calls": 451,
+   "callsMin": 1,
+   "triangles": 246240,
+   "geometries": 441,
+   "dpr": 1,
+   "frameMsP50": 322.9,
+   "frameMsP95": 389.2,
+   "programs": 23,
+   "textures": 11,
+   "renders": 5,
+   "heapMB": 59,
+   "longTasks": {
+    "count": 10,
+    "longestMs": 3007
+   },
+   "scene": {
+    "meshes": 440,
+    "triangles": 238824
+   },
+   "idleRendersIn3s": 0,
+   "moving": {
+    "frames": 18,
+    "p50": 367,
+    "p95": 417
+   },
+   "callsMinAfterMoving": 451,
+   "pickMs": {
+    "ms": 0.7299999999968956,
+    "hits": 10.466666666666667,
+    "bvh": {
+     "built": 324,
+     "ms": 90.29999999934807,
+     "queued": 0
+    }
+   },
+   "zoomIn": {
+    "programsFar": 23,
+    "programsNear": 23
+   },
+   "switch6": {
+    "texturesBefore": 11,
+    "texturesAfter": 11,
+    "geometriesBefore": 441,
+    "geometriesAfter": 441
+   }
+  },
+  "low": {
+   "msToStats": 6765,
+   "fps": 4,
+   "calls": 447,
+   "callsMin": 1,
+   "triangles": 88546,
+   "geometries": 437,
+   "dpr": 1,
+   "frameMsP50": 283,
+   "frameMsP95": 283,
+   "programs": 19,
+   "textures": 9,
+   "renders": 3,
+   "heapMB": 35,
+   "longTasks": {
+    "count": 10,
+    "longestMs": 3452
+   },
+   "scene": {
+    "meshes": 436,
+    "triangles": 85898
+   },
+   "idleRendersIn3s": 0,
+   "moving": {
+    "frames": 21,
+    "p50": 300,
+    "p95": 350
+   },
+   "callsMinAfterMoving": 447,
+   "pickMs": {
+    "ms": 1.15,
+    "hits": 8.533333333333333,
+    "bvh": {
+     "built": 269,
+     "ms": 34.60000000009313,
+     "queued": 0
+    }
+   },
+   "zoomIn": {
+    "programsFar": 19,
+    "programsNear": 19
+   },
+   "switch6": {
+    "texturesBefore": 9,
+    "texturesAfter": 9,
+    "geometriesBefore": 437,
+    "geometriesAfter": 437
+   }
+  }
+ },
+ "pickNoBvh": {
+  "ms": 3.7133333333302287,
+  "hits": 4.466666666666667,
+  "bvh": {
+   "built": 0,
+   "ms": 0,
+   "queued": 0
+  }
+ }
+}

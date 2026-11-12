@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { DataBundle } from '../core/loadData'
+import type { FullData } from '../core/loadData'
 import { t, ui, fmt } from '../core/i18n'
 import { useAppStore } from '../store/useAppStore'
 import { isCorrect, scorePct } from '../core/progress'
 import { worldPosition } from '../core/partGraph'
 
 /** 小考：identify（3D 亮零件）、choice（選擇題）、order（排順序）。答完算分，≥ passPct 解鎖下一級。 */
-export function QuizPanel({ data }: { data: DataBundle }) {
+export function QuizPanel({ data }: { data: FullData }) {
   const lang = useAppStore(s => s.lang)
   const quiz = useAppStore(s => s.quiz)!
   const answerQuiz = useAppStore(s => s.answerQuiz)

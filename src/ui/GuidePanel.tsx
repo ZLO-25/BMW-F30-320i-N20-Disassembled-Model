@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import type { DataBundle } from '../core/loadData'
+import type { FullData } from '../core/loadData'
 import { t, ui, fmt, partName } from '../core/i18n'
 import { useAppStore } from '../store/useAppStore'
 import { worldPosition } from '../core/partGraph'
@@ -10,7 +10,7 @@ import { ConfidenceBadge } from './ConfidenceBadge'
  * remove / install 的步驟按「做這一步」會真的去動 3D（照規則拆裝，工具自動拿在手上，所以不會跳錯誤示範）。
  * 這一步做好了（零件已經在托盤 / 已裝回）會自動變成「已完成」。
  */
-export function GuidePanel({ data }: { data: DataBundle }) {
+export function GuidePanel({ data }: { data: FullData }) {
   const lang = useAppStore(s => s.lang)
   const guide = useAppStore(s => s.guide)!
   const setStep = useAppStore(s => s.setGuideStep)

@@ -107,7 +107,7 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 ## P7 之後
 - 程式化零件載入時會「合併同材質的 mesh」（`src/scene/procedural/optimize.ts`）。**動畫要單獨動的子物件一定要取名字**（`obj.name = '...'`），有名字的節點會保留下來；沒名字的會被合併掉。`optimize.test.ts` 會檢查名字與外形不變。
 - `?merge=0` 關掉合併（除錯用）、`?stats=1` 顯示 FPS / draw calls，並把場景放在 `window.__n20scene` 給自動測試讀。
-- 手機的像素比由 drei `PerformanceMonitor` 自動調（掉到 30 fps 以下降到 1）。
+- （E2 起）畫質與像素比由 `src/core/quality.ts` 的畫質設定檔決定，自動降級是 `Scene.tsx` 的 `QualityGovernor`；`PerformanceMonitor` 已拿掉。
 - 部署：推到 main 就由 `.github/workflows/deploy.yml` 驗證、測試、打包、發佈到 GitHub Pages。
 - 查證回顧的修改寫在產生器 `p7.py`（每筆都有來源）；來源互相矛盾的數值（例：N20 放油螺絲 8 Nm vs 25 Nm）維持 null，並在警告文字裡寫明矛盾。
 - **子件的 `position` 是相對父件的**（3D 裡是巢狀 group）。在產生器裡用整車座標寫子件時，要先減掉父件位置（例：`p4.py` 的 `rs_local()`）。`src/core/positions.test.ts` 會擋下整車座標跑到車外的零件。
@@ -115,7 +115,7 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 
 ## U6 之後（材質與光影）
 - 表面紋理在 `src/scene/procedural/grain.ts`：程式產生、三面投影（不靠 UV），`M.*` 透過 `registry.ts` 的 `grained()` 接上。強度只改 `GRAIN_SETTINGS`。新材質要有質感就用 `grained(kind, ...)`，不要自己加 bumpMap。
-- AO 用 `@react-three/postprocessing` 的 N8AO（`Scene.tsx` 的 `PostFX`），只在 high/mid；low 不掛。`?ao=0` 強制關。
+- AO 用 `@react-three/postprocessing` 的 N8AO（`PostFX.tsx`，延遲載入），開不開、全／半解析度、Bloom、取樣數都由畫質設定檔（`core/quality.ts`）決定。`?ao=0` 強制關。
 - 掛後處理時色調映射由最後的 `<ToneMapping>` 做；背景 / 格線顏色與透視透明度（`PartNode.ghostTuning`）在 AO 開啟時有補償，改這些顏色要兩組一起改。
 - GLB 材質載入時用 `materialMatch.ts` 的 `presetForMaterial` 換成 `M.*`。
 
@@ -144,7 +144,7 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 - 場景舞台在 `src/scene/Stage.tsx`：`WorkshopEnvironment`（反射 + 背景）、`StageFloor`（水泥地 / 格線）、`SoftContactShadows`、`WorkLight`。修車廠房間與水泥地貼圖在 `workshop.ts`（純 three，有測試）。
 - 背景模式 `stage`：`workshop`（預設）/ `studio`（原本的深色格線），檢視工具裡切換，存在 localStorage `n20.stage.v1`。簡潔模式的顏色補償在 `STUDIO_COLORS`。
 - 接觸陰影不是每格更新：store 的拆裝、爆炸、顯示、車殼模式、變體改變後停 0.65 秒再重畫 2 格。新增會改變外形的 store 欄位時，加進 `SoftContactShadows` 的相依清單。
-- 工作燈跟著鏡頭，距離 target < 2.4 m 才亮；Bloom 只在 high。
+- 工作燈跟著鏡頭，距離 target < 2.4 m 才亮（E1 起一直在場景裡、遠處強度 0，不要改回切 visible）；Bloom 只在 L5。
 - `cylX/cylY/cylZ` 在 high 會產生有倒角的圓柱（`cylinderY`，半徑 ≥ 8 mm）；外形範圍不變，mid / low 照舊。要刀口邊的特殊零件直接用 `new THREE.CylinderGeometry`。
 
 ## R2 之後（引擎室寫實化，2026-11-12）
@@ -162,6 +162,19 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 - 引擎外殼（缸體、缸頭、氣門室蓋、油底殼…）與車皮都標 `userData.shell`，播放任何動畫時自動半透明。
 - 引擎聲 `src/scene/engineSound.ts`：Web Audio 即時合成（不是錄音），要使用者按下才出聲。
 - **螺栓級拆裝**：純邏輯 `src/core/boltSteps.ts`，介面 `BoltDialog.tsx`，開關在檢視工具（localStorage `n20.boltMode.v1`，預設關）。store 的 `tryRemove/tryInstall` 在 boltMode 時先設 `pendingBolt`；導覽、故意做錯、全部裝回都會跳過（`skipBolts`）。扭力只在 fastener 有 source 時顯示數字。
+
+
+## E0–E5 之後（效能與 UIUX，2026-11-12，見 docs/E0–E5_REPORT 與 docs/PERF_BASELINE.md）
+- **按需渲染**：Canvas 是 `frameloop="demand"`，靜止就不畫。任何會讓畫面改變的事都要讓它重畫：store 改變由 `InvalidateOnStore` 自動處理；**不經過 store 的改變**（計時器、材質、環境貼圖、effect 裡改場景）要自己呼叫 `redraw()`（`src/scene/redraw.ts`）；會讓外形改變的（移動、顯示／隱藏）呼叫 `redraw(true)` 連陰影圖一起更新。不要直接用 `invalidate(n)`（n 會累加到 60 格，見 redraw.ts 註解）。持續移動的東西在 `useFrame` 裡每格 `redraw(true)` 續命。
+- 陰影圖不每格重畫（`RedrawDriver` + `shadowMap.autoUpdate = false`）；只轉鏡頭不會更新。新增會動的東西記得 `redraw(true)`。
+- `npm run e2e` 現在會檢查：閒置 3 秒 0 格、每種操作（拖曳、爆炸、剖面、背景、車殼模式、拆下、動畫）畫面真的變、之後會停、L3 畫質、手動切換畫質。新增會影響畫面的操作時，在 `scripts/e2e-smoke.cjs` 加一條 `act(...)`。
+- **畫質**：`src/core/quality.ts` 六級階梯（L0–L5），`?quality=low|mid|high` 對應 L0/L1/L5，`?level=0..5` 直接指定；網址指定時不自動降級。檢視工具有「畫質：自動／流暢／均衡／精緻」，選擇存 localStorage `n20.quality.v1`。新增特效要加進 `QualityProfile`，不要在元件裡自己判斷裝置。
+- AO 可以在執行中關掉：store 的 `postfx` 旗標會讓 `PartNode` 重套透視透明度（`ghostTuning`）。
+- **載入**：`index.html` 有純 HTML 載入畫面，`src/boot.ts` 推進度；第一格前用 `compileAsync` 編譯著色器（Canvas 在這之前 `frameloop="never"`）。`PostFX.tsx` 與教學資料（`core/learnData.ts`，用 `loadLearnData()` / `useFullData()`）是動態載入，**不要從首包會用到的檔案直接 import 它們**。vite 的 `postfx` chunk 只能單向依賴 vendor / three；改分包後一定跑 `npm run e2e`。
+- 射線：每個夠大的 mesh 建 BVH（three-mesh-bvh，`ModelResolver.tsx`，`?bvh=0` 可關），拖曳超過 4 px 時 `DragGuard` 暫停偵測；`disposeObject()` 會一併 `disposeBoundsTree()`。
+- 量測：`?bench=1`（一鍵跑分，結果可複製）、`?stats=1`、`npm run perf`（headless，輸出 docs/perf/latest.json）、`npm run ui`（版面與按鈕大小，輸出 docs/e5/）。改效能相關的東西前後都跑一次，數字寫進報告。
+- 介面：手機把次要控制項收進「⋯」（CSS `.topbar-more`）；手機按鈕最小 44 px、桌機 24 px（`styles.css`）；側欄分頁是 `role=tablist`，左右鍵切換；預設模式是「檢視」；預設視角依畫面長寬比算（`defaultView()`），資訊卡有「看這個零件」；第一次使用引導存 `n20.onboard.v1`。
+- low 畫質的輪圈、碟盤用 16 邊（`chassisParts.ts` 的 `roundZ`）。
 
 ## R6-B 之後（實車照片疊圖，2026-11-12）
 - 檢視工具 →「📷 實車照片疊圖」：純邏輯 `src/core/photoOverlay.ts`（焦距 → 視角、標準視角、讀 EXIF 35mm 等效焦距，有測試），狀態 `src/store/useOverlayStore.ts`（調整值存 localStorage `n20.overlay.v1`），介面 `src/ui/PhotoOverlay.tsx`（React.lazy），鏡頭 `src/scene/OverlayCamera.tsx`。

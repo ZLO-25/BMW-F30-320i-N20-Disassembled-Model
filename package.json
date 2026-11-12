@@ -12,7 +12,10 @@
     "validate": "tsx scripts/validate.ts",
     "report:verify": "tsx scripts/reportVerify.ts",
     "report:claims": "tsx scripts/reportClaims.ts",
-    "e2e": "node scripts/e2e-smoke.cjs"
+    "e2e": "node scripts/e2e-smoke.cjs",
+    "perf": "node scripts/perf-bench.cjs",
+    "ui": "node scripts/ui-metrics.cjs",
+    "shots:quality": "node scripts/quality-shots.cjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",
@@ -22,6 +25,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "three": "^0.186.1",
+    "three-mesh-bvh": "0.8.3",
     "zod": "^4.1.0",
     "zustand": "^5.0.8"
   },

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import type { DataBundle } from '../core/loadData'
+import type { DataBundle, FullData } from '../core/loadData'
+import { useFullData } from './useFullData'
 import { t, ui, fmt } from '../core/i18n'
 import { triggerText } from './learnHelpers'
 import { useAppStore } from '../store/useAppStore'
@@ -13,6 +14,13 @@ import type { Level } from '../core/schema'
 
 /** 側欄「學習」分頁：學習路徑 Lv1–Lv5（鎖 / 成績 / 清單）、導覽入口、小考入口、錯誤示範紀錄 */
 export function LearnPanel({ data }: { data: DataBundle }) {
+  const lang = useAppStore(s => s.lang)
+  const full = useFullData(data)
+  if (!full) return <p className="muted">{ui('loading', lang)}</p>
+  return <LearnPanelBody data={full} />
+}
+
+function LearnPanelBody({ data }: { data: FullData }) {
   const guide = useAppStore(s => s.guide)
   const quiz = useAppStore(s => s.quiz)
   const scenario = useAppStore(s => s.scenario)
@@ -22,7 +30,7 @@ export function LearnPanel({ data }: { data: DataBundle }) {
   return <LevelList data={data} />
 }
 
-function LevelList({ data }: { data: DataBundle }) {
+function LevelList({ data }: { data: FullData }) {
   const lang = useAppStore(s => s.lang)
   const progress = useAppStore(s => s.progress)
   const setProgress = useAppStore(s => s.setProgress)
