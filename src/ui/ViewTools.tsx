@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import type { DataBundle } from '../core/loadData'
 import { t, ui, fmt, SUBSYSTEM_NAMES, SYSTEM_NAMES, type UiKey } from '../core/i18n'
 import { useAppStore, PAINT_KEYS, type SysVis } from '../store/useAppStore'
+import { useOverlayStore } from '../store/useOverlayStore'
 
 const SECTION_RANGE = { x: [0.5, 2.3], z: [-0.55, 0.55] } as const
 const SECTION_DEFAULT = { x: 1.15, z: 0 }
@@ -29,6 +30,8 @@ export function ViewTools({ data }: { data: DataBundle }) {
   const qLevel = useAppStore(s => s.qualityLevel)
   const qLocked = useAppStore(s => s.qualityLocked)
   const setQMode = useAppStore(s => s.setQualityMode)
+  const overlayOpen = useOverlayStore(s => s.panelOpen)
+  const setOverlayOpen = useOverlayStore(s => s.setPanelOpen)
 
   // E5：系統清單依大系統分組、可收合（預設只展開引擎），不然 20 多列平面列表在手機上會蓋住整個畫面
   const { subs, groups } = useMemo(() => {
@@ -102,6 +105,7 @@ export function ViewTools({ data }: { data: DataBundle }) {
         </div>
       </div>
       <p className="muted small tools-note">{fmt(ui('qualityNow', lang), { n: qLevel })}</p>
+      <button className={overlayOpen ? 'on' : ''} onClick={() => { setOverlayOpen(!overlayOpen); if (!overlayOpen) setOpen(false) }}>{ui('overlayOpen', lang)}</button>
       <div className="row"><span>{ui('systems', lang)}</span><button className="link" onClick={() => isolate(null, subs)}>{ui('showAll', lang)}</button></div>
       {groups.map(([sys, list]) => (
         <details key={sys} className="sys-group" open={sys === 'engine'}>

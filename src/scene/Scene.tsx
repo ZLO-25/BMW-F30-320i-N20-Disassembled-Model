@@ -11,6 +11,8 @@ import { PerfStats, statsEnabled, benchEnabled } from './PerfStats'
 import { Bench } from './Bench'
 import { bootSet, bootDone } from '../boot'
 import { redraw, tickRedraw } from './redraw'
+import { OverlayCamera, DEFAULT_FOV } from './OverlayCamera'
+import { useOverlayStore, overlayCamera } from '../store/useOverlayStore'
 import { WorkshopEnvironment, StageFloor, SoftContactShadows, WorkLight, PaintSync, STUDIO_COLORS } from './Stage'
 import { Governor, profileFor } from '../core/quality'
 
@@ -230,6 +232,8 @@ export function Scene({ data }: { data: DataBundle }) {
   const profile = useMemo(() => profileFor(level, mobileDevice, qmode === 'fine'), [level, mobileDevice, qmode])
   const detail = profile.detail
   const ao = profile.ao !== 'off' && !AO_FORCED_OFF
+  // R6-B：疊遠拍、變焦的照片時鏡頭要能退得很遠
+  const overlayOn = useOverlayStore(overlayCamera)
   // AO 開啟時：最後一步的 ACES 也會套到背景與格線上（會變得幾乎全黑），所以先給亮一點的顏色，
   // 算過 ACES 之後剛好回到原本的 #15171b / #262a31 / #363c46；半透明倍率也一起調（見 PartNode ghostTuning）。
   // E2：AO 可以在執行中被關掉，所以 postfx 旗標放進 store，PartNode 看到變化會重套透明度。
@@ -245,7 +249,7 @@ export function Scene({ data }: { data: DataBundle }) {
       frameloop={ready ? 'demand' : 'never'}
       dpr={dpr}
       shadows={shadows}
-      camera={{ position: CAMERA_POS.toArray(), fov: 42, near: 0.05, far: 100 }}
+      camera={{ position: CAMERA_POS.toArray(), fov: DEFAULT_FOV, near: 0.05, far: 100 }}
       raycaster={{ firstHitOnly: true } as never}   // E4：配合 BVH，只回傳最近的一個三角形
       onPointerMissed={() => select(null)}
       gl={{ antialias: profile.nativeAA, powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}>
@@ -270,9 +274,10 @@ export function Scene({ data }: { data: DataBundle }) {
         <AnimationDriver />
       </PartRegistryCtx.Provider>
       <OrbitControls ref={controls} makeDefault target={TARGET.toArray()} enableDamping dampingFactor={0.1}
-        minDistance={0.25} maxDistance={20} maxPolarAngle={Math.PI * 0.78} />
+        minDistance={0.25} maxDistance={overlayOn ? 40 : 20} maxPolarAngle={Math.PI * 0.78} />
       <CameraReset controls={controls} />
       <PartRegistryCtx.Provider value={registry}><FocusPart controls={controls} /></PartRegistryCtx.Provider>
+      <OverlayCamera />
       <SectionPlane />
       {ao && <Suspense fallback={null}><PostFX profile={profile} /></Suspense>}
       {statsEnabled() && <PerfStats />}

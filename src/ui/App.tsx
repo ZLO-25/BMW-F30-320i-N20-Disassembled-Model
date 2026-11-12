@@ -15,12 +15,15 @@ import { VariantModal } from './VariantModal'
 import { AnimPanel } from './AnimPanel'
 import { MistakeModal } from './MistakeModal'
 import { BoltDialog } from './BoltDialog'
+import { useOverlayStore } from '../store/useOverlayStore'
 import { ErrorBoundary, webglSupported } from './ErrorBoundary'
 
 // 審查 S3：點到才載入的面板（對照模式有第二個 Canvas；學習與保養帶著題庫與情境資料）
 const CompareView = lazy(() => import('./CompareView').then(m => ({ default: m.CompareView })))
 const LearnPanel = lazy(() => import('./LearnPanel').then(m => ({ default: m.LearnPanel })))
 const MaintenancePanel = lazy(() => import('./MaintenancePanel').then(m => ({ default: m.MaintenancePanel })))
+// R6-B：實車照片疊圖
+const PhotoOverlay = lazy(() => import('./PhotoOverlay'))
 const WEBGL = webglSupported()
 
 type TabId = 'tree' | 'info' | 'tray' | 'anim' | 'learn' | 'maint'
@@ -35,6 +38,7 @@ export function App() {
 }
 
 function AppBody() {
+  const overlayOpen = useOverlayStore(s => s.panelOpen)
   const variant = useAppStore(s => s.variant)
   const data = useMemo(() => loadData(variant ?? 'auto'), [variant])
   const lang = useAppStore(s => s.lang)
@@ -135,6 +139,7 @@ function AppBody() {
           <QualityToast />
           <Onboarding />
           <ViewTools data={data} />
+          {overlayOpen && WEBGL && <Suspense fallback={null}><PhotoOverlay /></Suspense>}
           <div className="touch-hint">{ui(mode === 'teardown' ? 'touchHintTeardown' : 'touchHint', lang)}</div>
         </div>
 

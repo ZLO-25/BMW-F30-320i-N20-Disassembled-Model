@@ -267,5 +267,13 @@
   "type": "media",
   "accessed": "2026-11-12",
   "note": "引擎室俯視：機油加注蓋在氣門室蓋前端右側（排氣側）、機濾座在左側；車尾：單支尾管在左。照片含車牌，只存在專案檔案，不放進 repo。只代表這一台車。"
+ },
+ {
+  "id": "bmw_press_f30_us_2017",
+  "title": "BMW Group PressClub USA: 2017 BMW 3 Series Sedan technical specifications (PDF)",
+  "url": "https://www.press.bmwgroup.com/usa/article/attachment/T0216443EN_US/391755",
+  "type": "manufacturer",
+  "accessed": "2026-11-12",
+  "note": "官方技術資料（2017 年式 F30 LCI，美規，英吋）：車長 182.8 in（4,643 mm）、寬 71.3 in（1,811 mm）、高 56.3 in（1,430 mm，後驅）、軸距 110.6 in（2,809 mm）、輪距 前 60.3 / 後 61.9 in（1,532 / 1,572 mm）、前懸 31.1 in（790 mm）、後懸 41.1 in（1,044 mm）、離地 5.5 in（140 mm）。換算 mm 是我們算的。台灣 M 套件保桿的懸長沒有另外列出，沿用這組。"
  }
 ]

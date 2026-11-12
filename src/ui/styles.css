@@ -396,3 +396,21 @@ p.verdict { margin: 0; }
   background: rgba(28,31,37,.97); border: 1px solid var(--accent); border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,.5); font-size: 13.5px; }
 .onboard p { margin: 6px 0 10px; line-height: 1.5; }
 .onboard-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* R6-B 實車照片疊圖 */
+.photo-overlay-clip { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 2; }
+.photo-overlay { position: absolute; left: 50%; top: 50%; width: auto; max-width: none; z-index: 2; pointer-events: none; user-select: none; transform-origin: center; }
+.photo-panel { position: absolute; right: 10px; top: 10px; z-index: 4; width: 290px; max-height: calc(100% - 20px); overflow: auto; background: rgba(28,31,37,.96); border: 1px solid var(--line); border-radius: 10px; padding: 10px; font-size: 13px; display: flex; flex-direction: column; gap: 8px; }
+.photo-panel.mini { width: auto; }
+.photo-panel .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.photo-panel .slider { display: flex; flex-direction: column; align-items: stretch; gap: 2px; }
+.photo-panel details { display: flex; flex-direction: column; gap: 8px; }
+.photo-panel summary { cursor: pointer; color: var(--muted); margin-bottom: 6px; }
+.photo-panel .slider em { font-style: normal; color: var(--muted); }
+.photo-panel p { margin: 0; line-height: 1.5; }
+.photo-panel .warn { color: #ffb300; }
+.file-btn { display: inline-block; text-align: center; padding: 6px 10px; border-radius: 6px; background: var(--accent); cursor: pointer; }
+.file-btn input { display: none; }
+@media (max-width: 760px) {
+  .photo-panel { left: 10px; right: 10px; width: auto; max-height: 45%; }
+}

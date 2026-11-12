@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
+import { CAR } from '../../core/photoOverlay'
 import { buildSkin, section, fineSection, regionOf, stations, BODY_X, SPLIT, type Region } from './bodyShell'
 
 const bbox = (r: Region) => {
@@ -9,14 +10,14 @@ const bbox = (r: Region) => {
 }
 
 describe('R3 車殼（照片描邊放樣）', () => {
-  it('整體尺寸對得上規格：長 4,624、寬 1,811、高 1,429 mm（誤差 < 1.5%）', () => {
+  it('整體尺寸對得上官方規格：長 4,643、寬 1,811、高 1,429 mm（長度誤差 < 1 cm，寬高 < 1.5%）', () => {
     const box = new THREE.Box3()
     for (const r of ['shell', 'hood', 'fbumper', 'rbumper', 'trunk'] as Region[]) box.union(bbox(r))
     const size = box.getSize(new THREE.Vector3())
-    expect(size.x).toBeCloseTo(4.626, 1)
+    expect(Math.abs(size.x - 4.643)).toBeLessThan(0.01)
     expect(Math.abs(size.z - 1.811) / 1.811).toBeLessThan(0.015)
     expect(Math.abs(box.max.y - 1.429) / 1.429).toBeLessThan(0.015)
-    expect(BODY_X.front - BODY_X.rear).toBeCloseTo(4.626, 2)
+    expect(BODY_X.front - BODY_X.rear).toBeCloseTo(4.643, 2)
   })
 
   it('每個截面都合理：車頂 ≥ 肩線 > 下緣，肩線不比最寬處寬', () => {
@@ -47,5 +48,15 @@ describe('R3 車殼（照片描邊放樣）', () => {
     expect(regionOf(2.15, 3)).toBe('fbumper')
     expect(regionOf(-2.0, 9)).toBe('trunk')
     expect(regionOf(-2.0, 4)).toBe('rbumper')
+  })
+
+  it('前後懸符合官方：前 790、後 1,044 mm（前軸 x=1.5、後軸 x=−1.31）', () => {
+    expect(BODY_X.front - 1.5).toBeCloseTo(0.79, 3)
+    expect(-1.31 - BODY_X.rear).toBeCloseTo(1.044, 3)
+  })
+
+  it('R6-B 疊圖用的車身常數 CAR 和車皮一致', () => {
+    expect(CAR.centerX).toBeCloseTo((BODY_X.front + BODY_X.rear) / 2, 6)
+    expect(CAR.length).toBeCloseTo(BODY_X.front - BODY_X.rear, 2)
   })
 })

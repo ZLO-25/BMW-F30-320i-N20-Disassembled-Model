@@ -181,6 +181,17 @@ async function main() {
       await p2.close()
     }
 
+    // R6-B 實車照片疊圖：開面板 → 選一張圖（記憶體裡的 4×3 PNG）→ 照片蓋上畫面 → 按標準視角不出錯
+    if (await page.$('.tools-fab')) await page.click('.tools-fab')   // E 的測試可能已把面板開著
+    await page.click('.tools-panel button:has-text("實車照片疊圖")')
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAIAAAA7ljmRAAAAFElEQVR4nGM8YWTEAANMDEgAhQMALI4BMuWTJ7wAAAAASUVORK5CYII=', 'base64')
+    await page.setInputFiles('.photo-panel input[type=file]', { name: 'test.png', mimeType: 'image/png', buffer: png })
+    await page.waitForSelector('.photo-overlay', { timeout: 10000 }).catch(() => fails.push('photo overlay image did not appear'))
+    await page.click('.photo-panel .seg button:has-text("左側")')
+    await page.waitForTimeout(800)
+    await page.click('.photo-panel button[aria-label=close]')
+    if (await page.$('.photo-overlay')) fails.push('photo overlay still shown after closing the panel')
+
     if (errors.length) fails.push(...errors.slice(0, 5))
     await browser.close()
   } finally {

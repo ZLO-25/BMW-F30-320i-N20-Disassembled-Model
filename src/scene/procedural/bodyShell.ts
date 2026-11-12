@@ -39,42 +39,73 @@
 import * as THREE from 'three'
 import { registerProcedural, M, mat, rbox, mesh, tube, type Detail } from './registry'
 
-// ───────────────────────── 輪廓表（X 由後往前） ─────────────────────────
+// ───────────────────────── 前後懸：用官方數字校正 ─────────────────────────
+/**
+ * R6-B：PROFILE 原本是照側面照描的，前懸量出 0.70 m、後懸 1.116 m（照片有透視，兩端量不準）。
+ * 官方數字（BMW 新聞稿技術資料，2017 F30 Sedan，bmw_press_f30_us_2017）：前懸 790 mm、後懸 1,044 mm、
+ * 車長 4,643 mm、軸距 2,809 mm。輪軸位置不變，兩端照比例拉長 / 縮短：
+ *
+ *        後懸 1.116 → 1.044                 前懸 0.70 → 0.79
+ *   ◄──────────────┤◯ 後軸 −1.31 ……… 前軸 +1.5 ◯├──────────────►
+ *        縮短 7 cm                               拉長 9 cm
+ *
+ * 輪廓表、蓋板分界、燈具位置都先用「描出來的 X」寫，再經過 stretchX() 換成官方比例。
+ */
+export const OVERHANG = { front: 0.79, rear: 1.044 } as const
+const AXLE_X = { front: 1.5, rear: -1.31 } as const
+const TRACED = { front: 0.7, rear: 1.116 } as const
+export function stretchX(x: number): number {
+  if (x > AXLE_X.front) return AXLE_X.front + (x - AXLE_X.front) * OVERHANG.front / TRACED.front
+  if (x < AXLE_X.rear) return AXLE_X.rear + (x - AXLE_X.rear) * OVERHANG.rear / TRACED.rear
+  return x
+}
+const sx = (keys: Key[]): Key[] => keys.map(([x, y]) => [stretchX(x), y])
+
+// ───────────────────────── 輪廓表（X 由後往前，描出來的座標，經 sx() 換成官方比例） ─────────────────────────
 type Key = [number, number]
 export const PROFILE = {
   /** 中線最高點 */
-  top: [
+  top: sx([
     [-2.426, 0.6], [-2.4, 0.874], [-2.32, 1.026], [-2.261, 1.111], [-2.078, 1.123], [-1.672, 1.141], [-1.432, 1.172],
     [-1.116, 1.336], [-0.793, 1.418], [-0.47, 1.429], [0.014, 1.418], [0.224, 1.385], [0.773, 1.1], [0.983, 1.06],
     [1.306, 1.02], [1.662, 0.97], [1.865, 0.925], [2.089, 0.828], [2.15, 0.77], [2.19, 0.7], [2.2, 0.62],
-  ] as Key[],
+  ] as Key[]),
   /** 側面肩線高度 */
-  belt: [
+  belt: sx([
     [-2.426, 0.58], [-2.4, 0.85], [-2.32, 0.98], [-2.26, 1.0], [-2.0, 1.03], [-1.6, 1.03], [-1.245, 1.01], [-0.5, 0.975],
     [0.4, 0.95], [0.773, 0.96], [1.3, 0.93], [1.865, 0.87], [2.089, 0.78], [2.15, 0.74], [2.19, 0.66], [2.2, 0.6],
-  ] as Key[],
+  ] as Key[]),
   /** 側面最下緣 */
-  bot: [
+  bot: sx([
     [-2.426, 0.36], [-2.3, 0.33], [-1.95, 0.31], [-1.82, 0.22], [-1.7, 0.2], [1.9, 0.2], [2.05, 0.235], [2.15, 0.25], [2.2, 0.32],
-  ] as Key[],
-  /** 最寬處半寬 */
+  ] as Key[]),
+  /**
+   * 最寬處半寬（俯視輪廓）。R6-B 改成官方懸長後的座標直接寫（不經 sx），車頭車尾改成圓弧：
+   * 車頭是圓弧鼻（兩角往後收約 25 cm，水箱罩在最前面、頭燈退後）；車尾中間平、兩角收約 16 cm。
+   * 依據：車頭斜上方照 842052b3、車尾照 19501054 的保桿弧度；側面照裡「前懸 ÷ 後懸」只有約 0.63
+   * （官方 0.76）：兩端從側面看到的最外點不是在兩角，而是靠近中線，所以兩角一定往後收；收的量用側面照疊圖對齊（R6_PHOTO_OVERLAY.md）。
+   *
+   *   俯視車頭：        ╭───╮  ← 中間最前（x = 2.29）
+   *                  ╭─╯     ╰─╮
+   *                 │  兩角往後收  │
+   */
   hw: [
-    [-2.426, 0.66], [-2.4, 0.78], [-2.32, 0.85], [-2.2, 0.89], [-1.9, 0.905], [1.8, 0.905], [2.0, 0.89], [2.089, 0.86],
-    [2.15, 0.8], [2.19, 0.72], [2.2, 0.64],
+    [-2.354, 0.17], [-2.345, 0.3], [-2.31, 0.48], [-2.27, 0.64], [-2.23, 0.76], [-2.19, 0.845], [-2.13, 0.893], [-2.05, 0.905],
+    [1.9, 0.905], [2.0, 0.885], [2.05, 0.84], [2.1, 0.76], [2.15, 0.64], [2.19, 0.51], [2.23, 0.37], [2.26, 0.24], [2.29, 0.1],
   ] as Key[],
-  /** 肩線半寬 */
+  /** 肩線半寬（比最寬處窄幾公分，兩端一起收） */
   hs: [
-    [-2.426, 0.6], [-2.4, 0.72], [-2.32, 0.81], [-2.2, 0.85], [-1.9, 0.87], [1.8, 0.875], [2.0, 0.85], [2.089, 0.81],
-    [2.15, 0.75], [2.19, 0.66], [2.2, 0.58],
+    [-2.354, 0.14], [-2.345, 0.265], [-2.31, 0.445], [-2.27, 0.605], [-2.23, 0.725], [-2.19, 0.81], [-2.13, 0.858], [-2.05, 0.87],
+    [1.9, 0.875], [2.0, 0.85], [2.05, 0.805], [2.1, 0.725], [2.15, 0.605], [2.19, 0.475], [2.23, 0.335], [2.26, 0.205], [2.29, 0.07],
   ] as Key[],
 }
-export const BODY_X = { rear: -2.426, front: 2.2 }
+export const BODY_X = { rear: stretchX(-2.426), front: stretchX(2.2) }
 /** 輪拱：圓心就是輪心（前軸 x=+1.5、後軸 x=−1.31），半徑照側面照 */
 export const ARCHES = [{ c: 1.5, y: 0.345, r: 0.44, wIn: 0.6 }, { c: -1.31, y: 0.345, r: 0.43, wIn: 0.64 }]
 /** 可拆蓋板的分界（X） */
-export const SPLIT = { hoodFront: 2.07, cowl: 0.8, fBumper: 1.97, trunkFront: -1.47, trunkRear: -2.27, rBumper: -1.8 }
+export const SPLIT = { hoodFront: stretchX(2.07), cowl: 0.8, fBumper: stretchX(1.97), trunkFront: stretchX(-1.47), trunkRear: stretchX(-2.27), rBumper: stretchX(-1.8) }
 /** 車窗範圍（X） */
-const GLASS = { side: [-1.25, 0.62], bPillar: [-0.23, -0.17], windshield: [0.224, 0.79], rear: [-1.45, -1.08] } as const
+const GLASS = { side: [-1.25, 0.62], bPillar: [-0.23, -0.17], windshield: [0.224, 0.79], rear: [stretchX(-1.45), -1.08] } as const
 const GLASS_HALF = 0.7, ROOF_HALF = 0.56
 
 /** 單調三次插值（Fritsch–Carlson）：照片描的點之間平順連起來，但不會像一般樣條那樣衝過頭 */
@@ -99,6 +130,18 @@ export function monotone(keys: Key[]) {
   }
 }
 const F = { top: monotone(PROFILE.top), belt: monotone(PROFILE.belt), bot: monotone(PROFILE.bot), hw: monotone(PROFILE.hw), hs: monotone(PROFILE.hs) }
+/**
+ * 車頭 / 車尾在半寬 z 處的 X（俯視輪廓上那一點）與那裡的斜角，用來把頭燈、尾燈、進氣口貼在弧面上。
+ * 在軸心到車端之間二分搜尋 hw(X) = z。
+ */
+export function endX(end: 'front' | 'rear', z: number): number {
+  let a = end === 'front' ? 1.9 : -2.05, b = end === 'front' ? BODY_X.front : BODY_X.rear
+  if (F.hw(b) >= z) return b
+  for (let i = 0; i < 40; i++) { const m = (a + b) / 2; if (F.hw(m) >= z) a = m; else b = m }
+  return (a + b) / 2
+}
+/** 弧面在 z 處的偏轉角（rad）：0 = 正對前後，越往兩角越大 */
+export const endYaw = (end: 'front' | 'rear', z: number) => Math.atan2(Math.abs(endX(end, z + 0.04) - endX(end, z - 0.04)), 0.08)
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
 const lerp = THREE.MathUtils.lerp
 
@@ -177,7 +220,7 @@ export function stations(d: Detail): number[] {
   for (let x = BODY_X.rear; x < BODY_X.front; x += step) xs.add(+x.toFixed(4))
   xs.add(BODY_X.front)
   // 兩端收得比較急，多放幾個
-  for (const x of [-2.42, -2.41, -2.38, -2.35, 2.17, 2.18, 2.19, 2.195]) xs.add(x)
+  for (const x of [-2.35, -2.34, -2.33, -2.31, -2.29, -2.26, 2.2, 2.23, 2.25, 2.27, 2.28, 2.285]) xs.add(x)
   for (const a of ARCHES) for (const x of [a.c - a.r - 0.0005, a.c - a.r + 0.0005, a.c + a.r - 0.0005, a.c + a.r + 0.0005]) xs.add(+x.toFixed(4))
   for (const x of Object.values(SPLIT)) xs.add(x)
   for (const r of Object.values(GLASS)) for (const x of r) xs.add(x)
@@ -355,27 +398,30 @@ registerProcedural('body_shell_v2', (d) => {
   // 頭燈：車頭兩角，往後斜，裡面兩圈「天使眼」
   for (const side of [1, -1]) {
     const hl = new THREE.Group()
-    hl.add(mesh(rbox(d, 0.12, 0.09, 0.46, 0.025), lensMat(0xdfe8f0, 0.6)))
-    hl.add(mesh(rbox(d, 0.05, 0.07, 0.42, 0.01), mat(0x2a2d31, { metalness: 0.6, roughness: 0.3 }), 0.02, 0, 0))
+    // 頭燈是透明燈罩 + 深色反射殼（正前照看起來是深灰帶鍍鉻），不是白色方塊
+    hl.add(mesh(rbox(d, 0.12, 0.08, 0.44, 0.025), lensMat(0x9aa6b2, 0.35)))
+    hl.add(mesh(rbox(d, 0.08, 0.065, 0.41, 0.01), mat(0x3a3e44, { metalness: 0.7, roughness: 0.25 }), 0.0, 0, 0))
     if (d !== 'low') for (const z of [-0.1, 0.06]) {
       const ring = new THREE.Mesh(new THREE.TorusGeometry(0.036, 0.004, 6, 24), lensMat(0xffffff, 0.9, 0xcfe6ff))
       ring.rotation.y = Math.PI / 2
       ring.position.set(0.05, 0, z)
       hl.add(ring)
     }
-    hl.position.set(2.17, 0.725, 0.47 * side)
-    hl.rotation.y = -0.12 * side
+    // 照正前照 97ee5669：頭燈內端貼著水箱罩外緣；位置跟著車頭弧面往後退、轉角
+    hl.position.set(endX('front', 0.47) - 0.04, 0.725, 0.47 * side)
+    hl.rotation.y = -endYaw('front', 0.47) * side
     g.add(hl)
   }
   // 雙腎型水箱罩：鍍鉻外框 + 黑色直柵
   for (const side of [1, -1]) {
     const kg = new THREE.Group()
-    kg.add(mesh(rbox(d, 0.03, 0.14, 0.2, 0.035), chrome()))
-    kg.add(mesh(rbox(d, 0.032, 0.12, 0.18, 0.03), M.glossPlastic(), 0.002, 0, 0))
-    if (d === 'high') for (let i = 0; i < 9; i++) kg.add(mesh(rbox(d, 0.012, 0.1, 0.006, 0.002), chrome(), 0.012, 0, -0.08 + i * 0.02))
-    kg.position.set(2.19, 0.67, 0.13 * side)
+    // 正前照（以車牌 32 cm 當比例尺）：每個腎型約 22 cm 寬、14 cm 高，中間只留一條縫
+    kg.add(mesh(rbox(d, 0.03, 0.14, 0.22, 0.035), chrome()))
+    kg.add(mesh(rbox(d, 0.032, 0.12, 0.2, 0.03), M.glossPlastic(), 0.002, 0, 0))
+    if (d === 'high') for (let i = 0; i < 10; i++) kg.add(mesh(rbox(d, 0.012, 0.1, 0.006, 0.002), chrome(), 0.012, 0, -0.09 + i * 0.02))
+    kg.position.set(endX('front', 0.125) - 0.012, 0.67, 0.125 * side)
     kg.rotation.z = -0.25
-    kg.rotation.y = -0.12 * side
+    kg.rotation.y = -endYaw('front', 0.125) * side
     g.add(kg)
   }
 
@@ -388,8 +434,8 @@ registerProcedural('body_shell_v2', (d) => {
   }
   // 尾燈外側那段（在葉子板上，順著車尾轉角斜過去）
   for (const side of [1, -1]) {
-    const t = mesh(rbox(d, 0.12, 0.12, 0.34, 0.025), lensMat(0xa3101a, 0.85, 0x5a0000), -2.31, TAIL.y + 0.02, 0.69 * side)
-    t.rotation.y = 0.45 * side
+    const t = mesh(rbox(d, 0.12, 0.12, 0.3, 0.025), lensMat(0xa3101a, 0.85, 0x5a0000), endX('rear', 0.68) + 0.06, TAIL.y + 0.02, 0.68 * side)
+    t.rotation.y = endYaw('rear', 0.68) * side
     g.add(t)
   }
   // 鯊魚鰭天線
@@ -403,8 +449,13 @@ registerProcedural('bumper_front_v2', (d) => {
   const g = skinGroup(d, 'fbumper', ORIGIN.fbumper)
   const o = ORIGIN.fbumper
   // 下進氣口與兩側進氣口（M 套件款，照 ZL 的車）
-  g.add(mesh(rbox(d, 0.05, 0.15, 0.95, 0.04), M.glossPlastic(), 2.195 - o[0], 0.41 - o[1], 0))
-  for (const side of [1, -1]) g.add(mesh(rbox(d, 0.05, 0.13, 0.2, 0.03), M.glossPlastic(), 2.12 - o[0], 0.4 - o[1], 0.62 * side, 0, -0.45 * side, 0))
+  // 正前照：下進氣口約 56 cm 寬（車牌正下方），兩側進氣口在保桿兩角，順著弧面
+  // 下進氣口分三段貼著圓鼻（中間在最前面，兩段往後轉）
+  for (const zc of [-0.19, 0, 0.19]) {
+    const zz = Math.abs(zc) + 0.05, yaw = zc === 0 ? 0 : -Math.sign(zc) * endYaw('front', zz)
+    g.add(mesh(rbox(d, 0.05, 0.15, 0.215, 0.03), M.glossPlastic(), endX('front', zc === 0 ? 0.09 : zz) - 0.012 - o[0], 0.43 - o[1], zc, 0, yaw, 0))
+  }
+  for (const side of [1, -1]) g.add(mesh(rbox(d, 0.05, 0.11, 0.2, 0.03), M.glossPlastic(), endX('front', 0.6) - 0.015 - o[0], 0.42 - o[1], 0.6 * side, 0, -endYaw('front', 0.6) * side, 0))
   return g
 })
 
@@ -412,8 +463,9 @@ registerProcedural('bumper_rear_v2', (d) => {
   const g = skinGroup(d, 'rbumper', ORIGIN.rbumper)
   const o = ORIGIN.rbumper
   // 下擾流（黑）+ 兩側反光片
-  g.add(mesh(rbox(d, 0.06, 0.06, 1.3, 0.02), M.glossPlastic(), -2.39 - o[0], 0.36 - o[1], 0))
-  for (const side of [1, -1]) g.add(mesh(rbox(d, 0.01, 0.02, 0.2, 0.005), lensMat(0xb3121a, 0.9), -2.415 - o[0], 0.43 - o[1], 0.5 * side))
+  // 車尾照 19501054：下緣黑色飾條（中間一段）、反光片在兩角（z ≈ ±0.6），順著弧面
+  g.add(mesh(rbox(d, 0.06, 0.06, 0.9, 0.02), M.glossPlastic(), endX('rear', 0.45) + 0.02 - o[0], 0.36 - o[1], 0))
+  for (const side of [1, -1]) g.add(mesh(rbox(d, 0.01, 0.02, 0.2, 0.005), lensMat(0xb3121a, 0.9), endX('rear', 0.6) - o[0], 0.43 - o[1], 0.6 * side, 0, endYaw('rear', 0.6) * side, 0))
   return g
 })
 
@@ -421,7 +473,8 @@ registerProcedural('trunk_lid_v2', (d) => {
   const g = skinGroup(d, 'trunk', ORIGIN.trunk)
   const o = ORIGIN.trunk
   for (const side of [1, -1]) {
-    g.add(mesh(rbox(d, 0.06, 0.08, 0.26, 0.02), lensMat(0xa3101a, 0.85, 0x5a0000), -2.345 - o[0], TAIL.y + 0.03 - o[1], 0.4 * side))
+    // 車尾照：尾燈在行李廂蓋上那段約 z 0.40–0.55
+    g.add(mesh(rbox(d, 0.06, 0.08, 0.16, 0.02), lensMat(0xa3101a, 0.85, 0x5a0000), endX('rear', 0.47) + 0.025 - o[0], TAIL.y + 0.03 - o[1], 0.47 * side, 0, endYaw('rear', 0.47) * side, 0))
   }
   return g
 })

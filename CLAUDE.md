@@ -175,3 +175,12 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 - 量測：`?bench=1`（一鍵跑分，結果可複製）、`?stats=1`、`npm run perf`（headless，輸出 docs/perf/latest.json）、`npm run ui`（版面與按鈕大小，輸出 docs/e5/）。改效能相關的東西前後都跑一次，數字寫進報告。
 - 介面：手機把次要控制項收進「⋯」（CSS `.topbar-more`）；手機按鈕最小 44 px、桌機 24 px（`styles.css`）；側欄分頁是 `role=tablist`，左右鍵切換；預設模式是「檢視」；預設視角依畫面長寬比算（`defaultView()`），資訊卡有「看這個零件」；第一次使用引導存 `n20.onboard.v1`。
 - low 畫質的輪圈、碟盤用 16 邊（`chassisParts.ts` 的 `roundZ`）。
+
+## R6-B 之後（實車照片疊圖，2026-11-12）
+- 檢視工具 →「📷 實車照片疊圖」：純邏輯 `src/core/photoOverlay.ts`（焦距 → 視角、標準視角、讀 EXIF 35mm 等效焦距，有測試），狀態 `src/store/useOverlayStore.ts`（調整值存 localStorage `n20.overlay.v1`），介面 `src/ui/PhotoOverlay.tsx`（React.lazy），鏡頭 `src/scene/OverlayCamera.tsx`。
+- **照片只用 `URL.createObjectURL` 放在記憶體**，不上傳、不存 localStorage；ZL 的照片含車牌，仍然不能放進 repo（截圖也不行）。
+- 有照片且面板開著時，3D 鏡頭的視角 = 照片的視角（`cameraVfov(vfovFromFocal35(...), scale)`），只暫時隱藏照片時視角不變；關掉面板回到 42°。
+- `CAR`（photoOverlay.ts）是車身外形常數，要和 `bodyShell.ts` 的 `BODY_X` 一致，`bodyShell.test.ts` 會檢查。
+- 手機照片 EXIF 的焦距不一定可信：ZL 側面照記 24 mm，反推實際約 45 mm（裁切 / 變焦），而且畫面中心往下偏（`dy ≈ −23%`）。
+- **前後懸用官方值**（`bmw_press_f30_us_2017`）：前 790、後 1,044 mm，車長 4,643 mm。`bodyShell.ts` 的 `stretchX()` 把照片描的 X 換成官方比例；hw / hs（俯視輪廓）直接用最終座標寫，兩端是圓弧（車頭圓鼻、車尾兩角收 16 cm）。
+- 車頭車尾的燈、進氣口一律用 `endX(end, z)` / `endYaw(end, z)` 貼著弧面放，改 hw 之後不用逐一調位置。
