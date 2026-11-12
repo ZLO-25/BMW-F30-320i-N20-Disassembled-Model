@@ -1,10 +1,11 @@
 import { Suspense, createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
+import { useShallow } from 'zustand/react/shallow'
 import type { Part } from '../core/schema'
 import type { PartGraph } from '../core/partGraph'
 import { useAppStore, type SysVis } from '../store/useAppStore'
-import { parseModelRef, useProceduralObject, GlbObject } from './ModelResolver'
+import { parseModelRef, useProceduralObject, disposeObject, GlbObject } from './ModelResolver'
 import type { Detail } from './procedural'
 
 const SELECT = new THREE.Color(0xffa726)
@@ -39,6 +40,29 @@ function applyHighlight(root: THREE.Object3D, look: Look) {
 export const ghostTuning = { scale: 1 }
 const ghostOpacityFor = (isBody: boolean) => (isBody ? 0.12 : 0.14) * ghostTuning.scale
 
+type SpecBase = { metalness: number; roughness: number; envMapIntensity: number; clearcoat?: number }
+
+/**
+ * 透視時把「反光」關掉。
+ * 車漆是 metalness 0.6 + clearcoat 1：攝影棚環境貼圖映在上面的高光在線性空間是很大的數值（可能 > 5），
+ * 乘上 0.1 的透明度還是比 0.5 亮，所以半透明的車殼會出現一大片白光（U6 之後更明顯，因為最後才做色調映射）。
+ * 透視的目的是「看得到裡面、又知道殼在哪」，所以透視時改成不反光的霧面：金屬度 0、粗糙度 1、環境反射壓低、clearcoat 0。
+ * 原本的值記在 userData.baseSpec，切回實體時還原。
+ */
+function applyGhostSpecular(sm: THREE.MeshStandardMaterial, ghost: boolean) {
+  if (typeof sm.metalness !== 'number') return   // 不是 PBR 材質（例如 shadowMaterial）就不動
+  const ud = sm.userData as { baseSpec?: SpecBase }
+  const phys = sm as THREE.MeshPhysicalMaterial
+  if (ud.baseSpec === undefined) {
+    ud.baseSpec = { metalness: sm.metalness, roughness: sm.roughness, envMapIntensity: sm.envMapIntensity, clearcoat: typeof phys.clearcoat === 'number' ? phys.clearcoat : undefined }
+  }
+  const b = ud.baseSpec
+  sm.metalness = ghost ? 0 : b.metalness
+  sm.roughness = ghost ? 1 : b.roughness
+  sm.envMapIntensity = ghost ? 0.15 : b.envMapIntensity
+  if (b.clearcoat !== undefined) phys.clearcoat = ghost ? 0 : b.clearcoat
+}
+
 /** 透明化 / 隱藏：記住原本的透明設定，恢復時才回得去。ghostShell = 動畫時把外殼（userData.shell）變半透明看內部 */
 export function applyVisibility(root: THREE.Object3D, vis: SysVis, ghostOpacity = 0.14, ghostShell = false) {
   root.traverse((o) => {
@@ -52,6 +76,7 @@ export function applyVisibility(root: THREE.Object3D, vis: SysVis, ghostOpacity 
       mm.transparent = ghost || !!ud.baseTransparent
       mm.opacity = ghost ? ghostOpacity : ud.baseOpacity
       mm.depthWrite = !ghost
+      applyGhostSpecular(mm as THREE.MeshStandardMaterial, ghost)
       mm.needsUpdate = true
     }
   })
@@ -69,18 +94,19 @@ interface Props { part: Part; graph: PartGraph; detail: Detail; shadows: boolean
 /** 一個零件 = 一個 group（位置/旋轉/爆炸/拆下動畫）+ 它的模型 + 遞迴的子件 */
 export function PartNode({ part, graph, detail, shadows }: Props) {
   const ref = useRef<THREE.Group>(null)
-  const selected = useAppStore(s => s.selectedId === part.id)
-  const hovered = useAppStore(s => s.hoveredId === part.id)
-  const removed = useAppStore(s => s.removedIds.has(part.id))
-  const parentRemoved = useAppStore(s => (part.parent ? s.removedIds.has(part.parent) : false))
-  const hint = useAppStore(s => s.hint)
-  const bodyMode = useAppStore(s => s.bodyMode)
-  const sysVis = useAppStore(s => s.sysVis[part.subsystem] ?? 'show')
-  const mode = useAppStore(s => s.mode)
-  const select = useAppStore(s => s.select)
-  const hover = useAppStore(s => s.hover)
-  const tryRemove = useAppStore(s => s.tryRemove)
-  const shellGhost = useAppStore(s => s.anim !== null)
+  // 審查 S5：一個節點只訂閱一次（useShallow），不要 11 個 selector；163 個零件 × 11 = 1,800 個 listener，
+  // 滑鼠掃過零件時每次 hover() 都要跑完它們。hint 只取「有沒有擋到我」的 token，不訂閱整個物件。
+  const { selected, hovered, removed, parentRemoved, blockedToken, bodyMode, sysVis, mode, shellGhost } = useAppStore(useShallow(s => ({
+    selected: s.selectedId === part.id,
+    hovered: s.hoveredId === part.id,
+    removed: s.removedIds.has(part.id),
+    parentRemoved: part.parent ? s.removedIds.has(part.parent) : false,
+    blockedToken: s.hint && s.hint.kind === 'blocked_remove' && s.hint.ids.includes(part.id) ? s.hint.token : 0,
+    bodyMode: s.bodyMode,
+    sysVis: s.sysVis[part.subsystem] ?? 'show',
+    mode: s.mode,
+    shellGhost: s.anim !== null,
+  })))
   const registry = useContext(PartRegistryCtx)
   const children = graph.children.get(part.id) ?? []
 
@@ -91,11 +117,11 @@ export function PartNode({ part, graph, detail, shadows }: Props) {
   // 被擋住時閃紅色 2.5 秒
   const [flash, setFlash] = useState(false)
   useEffect(() => {
-    if (!hint || hint.kind !== 'blocked_remove' || !hint.ids.includes(part.id)) return
+    if (!blockedToken) return
     setFlash(true)
     const t = setTimeout(() => setFlash(false), 2500)
     return () => clearTimeout(t)
-  }, [hint, part.id])
+  }, [blockedToken])
 
   const modelRef = useMemo(() => parseModelRef(part.modelRef), [part.modelRef])
   const modelHolder = useRef<THREE.Object3D | null>(null)
@@ -136,18 +162,25 @@ export function PartNode({ part, graph, detail, shadows }: Props) {
     a.fly += (goal - a.fly) * Math.min(1, dt * 4)
     if (Math.abs(goal - a.fly) < 0.002) a.fly = goal
     target.copy(base).addScaledVector(dir, s.explode * EXPLODE_SCALE).addScaledVector(flyDir, a.fly)
-    g.position.lerp(target, Math.min(1, dt * 8))
-    g.visible = !(removed && (parentRemoved || a.fly > 0.97))
+    // 審查 S4：已經到位就不要再動 position（每動一次 three 就要重算這個 group 的矩陣），閒置時 163 個零件成本接近零
+    const d2 = g.position.distanceToSquared(target)
+    if (d2 > 1e-10) {
+      if (d2 < 1e-7 && a.fly === goal) g.position.copy(target)
+      else g.position.lerp(target, Math.min(1, dt * 8))
+    }
+    const visible = !(removed && (parentRemoved || a.fly > 0.97))
+    if (g.visible !== visible) g.visible = visible
   })
 
   const onClick = (e: ThreeEvent<MouseEvent>) => {
     if (ignoreClicks || removed) return
     e.stopPropagation()
-    select(part.id)
-    if (mode === 'teardown') tryRemove(graph, part.id)
+    const s = useAppStore.getState()
+    s.select(part.id)
+    if (mode === 'teardown') s.tryRemove(graph, part.id)
   }
-  const onOver = (e: ThreeEvent<PointerEvent>) => { if (ignoreClicks || removed) return; e.stopPropagation(); hover(part.id); document.body.style.cursor = mode === 'teardown' ? 'grab' : 'pointer' }
-  const onOut = () => { if (ignoreClicks) return; hover(null); document.body.style.cursor = 'auto' }
+  const onOver = (e: ThreeEvent<PointerEvent>) => { if (ignoreClicks || removed) return; e.stopPropagation(); useAppStore.getState().hover(part.id); document.body.style.cursor = mode === 'teardown' ? 'grab' : 'pointer' }
+  const onOut = () => { if (ignoreClicks) return; useAppStore.getState().hover(null); document.body.style.cursor = 'auto' }
 
   return (
     <group ref={ref} name={part.id}
@@ -168,6 +201,7 @@ export function PartNode({ part, graph, detail, shadows }: Props) {
 
 function ProceduralHolder({ name, detail, onReady }: { name: string; detail: Detail; onReady: (o: THREE.Object3D) => void }) {
   const obj = useProceduralObject(name, detail)
-  useEffect(() => { onReady(obj) }, [obj]) // eslint-disable-line react-hooks/exhaustive-deps
+  // 審查 S1：卸載（例如切換變速箱重建場景）時把 geometry / material 從顯示卡釋放，不然每切一次就多一份
+  useEffect(() => { onReady(obj); return () => disposeObject(obj) }, [obj]) // eslint-disable-line react-hooks/exhaustive-deps
   return <primitive object={obj} />
 }

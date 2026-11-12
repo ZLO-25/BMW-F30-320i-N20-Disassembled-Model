@@ -8,13 +8,24 @@ import { useFrame, useThree } from '@react-three/fiber'
 export const statsEnabled = () => new URLSearchParams(location.search).get('stats') === '1'
 
 export function PerfStats() {
-  const { gl, scene } = useThree()
+  const { gl, scene, camera, controls } = useThree()
   const box = useRef<HTMLDivElement | null>(null)
   const acc = useRef({ frames: 0, time: 0 })
 
   useEffect(() => {
     // 自動測試用：讀得到 3D 場景（例如檢查動畫有沒有真的動到零件）
     ;(window as unknown as { __n20scene: unknown }).__n20scene = scene
+  }, [scene])
+  useEffect(() => {
+    // 自動截圖用：把鏡頭擺到指定位置看指定目標（審查截圖才有固定視角可以前後比較）
+    type Ctl = { target: { set: (x: number, y: number, z: number) => void }; update: () => void } | null
+    ;(window as unknown as { __n20cam: unknown }).__n20cam = (px: number, py: number, pz: number, tx: number, ty: number, tz: number) => {
+      camera.position.set(px, py, pz)
+      const c = controls as unknown as Ctl
+      if (c) { c.target.set(tx, ty, tz); c.update() } else camera.lookAt(tx, ty, tz)
+    }
+  }, [camera, controls])
+  useEffect(() => {
     const div = document.createElement('div')
     div.className = 'perf-stats'
     document.body.appendChild(div)

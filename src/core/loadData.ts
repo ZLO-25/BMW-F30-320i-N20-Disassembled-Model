@@ -45,10 +45,13 @@ export function loadData(variant: Variant = 'auto'): DataBundle {
     return b
   }
   const parts: Part[] = []
+  const fileIssues: GraphIssue[] = []
   for (const [file, raw] of Object.entries(partModules)) {
     const res = PartFile.safeParse(raw)
     if (!res.success) {
+      // 審查 S2：壞檔不再靜默跳過，記成 issue 讓「關於」頁看得到
       console.error(`[data] ${file} 格式錯誤`, res.error.issues)
+      fileIssues.push({ partId: file.split('/').pop() ?? file, message: `檔案格式錯誤：${res.error.issues.slice(0, 3).map(i => `${i.path.join('.')} ${i.message}`).join('；')}` })
       continue
     }
     parts.push(...res.data)
@@ -64,7 +67,7 @@ export function loadData(variant: Variant = 'auto'): DataBundle {
   const maintenance = Object.values(maintModules).flatMap(m => MaintenanceFile.parse(m))
   const scenarios = Object.values(scnModules).flatMap(m => ScenarioFile.parse(m))
   const toolIds = new Set(tools.map(t => t.id))
-  const issues = validateGraph(parts, toolIds)
+  const issues = [...fileIssues, ...validateGraph(parts, toolIds)]
   if (issues.length) console.warn('[data] 相依圖問題', issues)
   base = {
     parts,

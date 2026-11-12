@@ -83,7 +83,7 @@ export function AnimPanel({ data }: { data: DataBundle }) {
                 <tr><td>{ui('ratio', lang)}</td><td>{gear === 'N' ? '—' : `${ratios[gear]?.toFixed(3)} : 1`}</td></tr>
                 {variant === 'auto' && <tr><td>{ui('engaged', lang)}</td><td>{gear === 'N' ? '—' : AUTO_ELEMENTS[gear].split('').map(L => <span key={L} className={`chip plain el el-${L}`}>{L}{L === 'A' || L === 'B' ? ' (brake)' : ''}</span>)}</td></tr>}
               </tbody></table>
-              <p className="muted small">{variant === 'manual' ? t(MANUAL_RATIOS_NOTE, lang) : (lang === 'zh' ? '齒比與接合表來源：Wikipedia ZF 8HP（社群可信度）' : 'Ratios and engagement table: Wikipedia ZF 8HP (community confidence)')}</p>
+              <p className="muted small">{variant === 'manual' ? t(MANUAL_RATIOS_NOTE, lang) : ui('ratioSourceAuto', lang)}</p>
             </>
           )}
           <button className="link" onClick={() => pick(null)}>■ {ui('animNone', lang)}</button>

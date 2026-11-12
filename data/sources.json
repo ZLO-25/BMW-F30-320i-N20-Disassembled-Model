@@ -155,5 +155,109 @@
   "type": "manufacturer",
   "accessed": "2026-10-26",
   "note": "副廠零件目錄：標準煞車前碟 300×22 mm、後碟 300×20 mm；M Sport 煞車前 340、後 345 mm。目錄頁面列的是 07/15–10/18 的 320i（135 kW）"
+ },
+ {
+  "id": "fcp_n20_chain",
+  "title": "FCP Euro: How to replace the BMW N20 timing chain, Part 1 (removal)",
+  "url": "https://www.fcpeuro.com/blog/how-to-replace-the-bmw-n20-timing-chain-part-1-removal",
+  "type": "diy",
+  "accessed": "2026-11-02",
+  "note": "正時鏈在引擎前方（皮帶盤後面）；流程拆減震皮帶盤、油底殼、氣門室蓋、VANOS 鏈輪、導軌，不拆變速箱（飛輪只用工具鎖住）。VANOS 電磁閥在氣門室蓋前端；高壓油泵在 VANOS 蓋旁；真空泵在缸頭後方貼防火牆。"
+ },
+ {
+  "id": "bimmerworld_vacuum",
+  "title": "BimmerWorld: Vacuum pump for N20/N26 engines (11667622380)",
+  "url": "https://www.bimmerworld.com/Brakes/Vacuum-Pump-For-N20-N26-Engines-F22-F23-F30-F31-F32-F33-F34-F36-F10.html",
+  "type": "parts_catalog",
+  "accessed": "2026-11-02",
+  "note": "凸輪軸驅動的機械真空泵，鎖在缸頭後方，供應煞車倍力器、渦輪洩壓閥致動器與排氣閥門的真空。"
+ },
+ {
+  "id": "getjerry_n20_oil",
+  "title": "Jerry: BMW N20 engine oil capacity",
+  "url": "https://getjerry.com/car-repair/bmw-n20-oil-capacity",
+  "type": "media",
+  "accessed": "2026-11-02",
+  "note": "寫 5.3 quart（約 5.0 L），與 FCP Euro 的 4.5 L 矛盾，所以本專案把機油容量維持待查證。"
+ },
+ {
+  "id": "bimmerguides_wheel_torque",
+  "title": "Bimmer Guides: BMW wheel tightening torque specifications",
+  "url": "https://bimmerguides.com/bmw-wheel-tightening-torque-specifications/",
+  "type": "repair_site",
+  "accessed": "2026-11-02",
+  "note": "F30/F31/F34 列 140 Nm，頁面稱引自 BMW 維修手冊但沒註明版本，所以標 community；請再用車主手冊確認。"
+ },
+ {
+  "id": "bmw_st1111_n20",
+  "title": "BMW Technical Training ST1111: N20 Engine (VH-23, 2010)",
+  "url": "https://ia600902.us.archive.org/26/items/BMWTechnicalTrainingDocuments/ST1111%20N20%20Engine/N20%20Engine.pdf",
+  "type": "oem",
+  "accessed": "2026-11-02",
+  "note": "原廠訓練教材（archive.org 副本）。用到：高壓油泵由排氣凸輪軸驅動（p.17/52/90）、機油泵為可變排量滑塊泵、裝在平衡軸殼體飛輪側、由第一根平衡軸齒輪帶動（p.72）、平衡軸上下疊、齒形鏈驅動（p.7, 46–47）、真空泵由進氣凸輪軸第四軸承供油（p.70）、電子水泵 400 W（p.95）、N20B20O0 壓縮比 10.0:1（p.5）、正時鏈在前方（p.43）。"
+ },
+ {
+  "id": "fcp_n20_hpfp",
+  "title": "FCP Euro: How to replace a BMW F30 high pressure fuel pump (N20)",
+  "url": "https://www.fcpeuro.com/blog/how-to-replace-a-bmw-f30-high-pressure-fuel-pump",
+  "type": "repair_site",
+  "accessed": "2026-11-02",
+  "note": "油泵螺絲 T30 12 Nm、油管接頭 13 Nm、塔頂拉桿 56 Nm + 90°；要先拆後方進氣飾蓋與塔頂拉桿（印證油泵在缸頭後方）。"
+ },
+ {
+  "id": "fcp_f30_water_pump",
+  "title": "FCP Euro: How to replace a BMW F30 water pump & thermostat (N20/N26)",
+  "url": "https://www.fcpeuro.com/blog/how-to-replace-a-bmw-f30-water-pump-thermostat-n20-n26-engine",
+  "type": "repair_site",
+  "accessed": "2026-11-02",
+  "note": "N20 水泵是電子式（不是皮帶）、是冷卻系統最低點、裝在引擎下方、三顆 E12 螺絲；節溫器在缸頭上的冷卻水法蘭。"
+ },
+ {
+  "id": "autodata_f30_320i",
+  "title": "auto-data.net: BMW 3 Series Sedan (F30) 320i (184 Hp) 2012–2015",
+  "url": "https://www.auto-data.net/en/bmw-3-series-sedan-f30-320i-184hp-17207",
+  "type": "media",
+  "accessed": "2026-11-02",
+  "note": "長 4624 / 寬 1811 / 高 1429 mm、軸距 2810、輪距 1543/1583、空車重 1400 kg（手排）、油箱 60 L、機油 5 L、壓縮比 11:1、184 hp @5000、270 Nm @1250–4500。聚合網站，標 community。"
+ },
+ {
+  "id": "bimmerworld_microfilter_f30",
+  "title": "BimmerWorld: Activated charcoal cabin air filter (microfilter) F22/F3X/F8X 64119237555",
+  "url": "https://www.bimmerworld.com/Engine/Engine-Maintenance/BMW-Microfilter-Cabin-Air-Cleaner-Activated-Charcoal-F3X-F22-F8X-Corteco.html",
+  "type": "parts_catalog",
+  "accessed": "2026-11-02",
+  "note": "料號 64 11 9 237 555（頁面另一處寫 …554，以車上舊件為準）；建議一年或 15,000 英里換。"
+ },
+ {
+  "id": "cartipsdaily_cabin_filter",
+  "title": "cartipsdaily: BMW cabin air filter replacement by generation (F30 = passenger footwell)",
+  "url": "https://cartipsdaily.com/bmw-cabin-air-filter-replacement",
+  "type": "diy",
+  "accessed": "2026-11-02",
+  "note": "F30/F32：濾網在副駕腳部空間、手套箱下隔音飾板後，單片彎曲濾網、半月形蓋、T20 螺絲。另有 Bentley Publishers F30 冷氣濾網 DIY 影片（https://bentleypubs.atlassian.net/wiki/x/bQYTGg）佐證位置。"
+ },
+ {
+  "id": "fuseandrelay_f30",
+  "title": "fuseandrelay.com: BMW 3 (F30/F31/F34/F80, 2012–2018) fuse and relay boxes",
+  "url": "https://fuseandrelay.com/bmw/f30.html",
+  "type": "diy",
+  "accessed": "2026-11-02",
+  "note": "引擎室保險絲／繼電器盒在右側靠擋風玻璃、有保護蓋；車內的在副駕 A 柱；行李廂右側電瓶旁另有兩個。"
+ },
+ {
+  "id": "bimmerworld_n20_water_pump",
+  "title": "BimmerWorld: Electric water pump, Saleri OEM, F30 320i (11517597715)",
+  "url": "https://www.bimmerworld.com/Cooling/Water-Pumps/Electric-Water-Pump-Saleri-OEM-F30-320i-320ix-OEM.html",
+  "type": "parts_catalog",
+  "accessed": "2026-11-02",
+  "note": "確認 F30 320i N20 的水泵是電子式、由引擎電腦控制。"
+ },
+ {
+  "id": "unixnerd_n20",
+  "title": "unixnerd.co.uk: BMW N20 and N26 four-cylinder turbocharged engines",
+  "url": "https://unixnerd.co.uk/n20.html",
+  "type": "wiki",
+  "accessed": "2026-11-02",
+  "note": "鍛造曲軸四配重、曲軸偏置、兩根平衡軸、高壓油泵由排氣凸輪軸驅動、2015/1 改款正時鏈、真空泵缺油召回。"
  }
 ]

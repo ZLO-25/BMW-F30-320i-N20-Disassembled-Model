@@ -1,7 +1,7 @@
 import type { DataBundle } from '../core/loadData'
 import { t, ui, partName } from '../core/i18n'
 import { useAppStore } from '../store/useAppStore'
-import { triggerText } from './LearnPanel'
+import { triggerText } from './learnHelpers'
 
 /**
  * 錯誤示範對話框：要拆的零件規則上拆得下來，但現在少了工具 / 少做一步。

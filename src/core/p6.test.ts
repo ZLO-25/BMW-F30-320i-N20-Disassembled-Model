@@ -22,10 +22,12 @@ describe('拆解提示（情境任務用）', () => {
     const s = applyRemove(emptyTeardown(), r.unit)
     expect(nextRemovalStep(g, s, 'eng.head.engine_cover')).toBeNull()
   })
-  it('正時鏈（自排）的拆解路線會經過變速箱', () => {
+  it('正時鏈（自排）的拆解路線經過減震皮帶盤與氣門室蓋，但不經過變速箱', () => {
     const plan = removalPlan(g, emptyTeardown(), ['eng.timing.chain'])
     expect(plan.stuck).toEqual([])
-    expect(plan.order).toContain('trans.auto.assembly')
+    expect(plan.order).toContain('eng.front.vibration_damper')
+    expect(plan.order).toContain('eng.head.valve_cover')
+    expect(plan.order).not.toContain('trans.auto.assembly')
     expect(plan.order[plan.order.length - 1]).toBe('eng.timing.chain')
   })
 })

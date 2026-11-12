@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import type { DataBundle } from '../core/loadData'
-import { t, ui, fmt, partName } from '../core/i18n'
+import { t, ui, fmt } from '../core/i18n'
+import { triggerText } from './learnHelpers'
 import { useAppStore } from '../store/useAppStore'
 import { isLevelUnlocked, emptyProgress } from '../core/progress'
 import { worldPosition } from '../core/partGraph'
@@ -127,12 +128,6 @@ export function beginScenario(data: DataBundle, id: string, lang: 'zh' | 'en') {
   useAppStore.getState().startScenario(id)
 }
 
-export function triggerText(trigger: string, data: DataBundle, lang: 'zh' | 'en'): string {
-  const [kind, ref] = trigger.split(':')
-  if (kind === 'remove_without_tool') { const tl = data.tools.get(ref); return fmt(ui('mistakeTool', lang), { t: tl ? partName(tl.name) : ref }) }
-  if (kind === 'remove_before') { const p = data.parts.find(x => x.id === ref); return fmt(ui('mistakeBefore', lang), { p: p ? partName(p.name) : ref }) }
-  return trigger
-}
 
 /** 清單上每件事的「去做」：看車殼 → 透視；只看某系統 → 檢視工具 isolate；動畫 → 動畫分頁；看零件 → 選取並對準鏡頭 */
 function GoalButton({ data, goal }: { data: DataBundle; goal: Level['goals'][number] }) {
