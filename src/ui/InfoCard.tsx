@@ -62,6 +62,10 @@ export function InfoCard({ data }: { data: DataBundle }) {
         <code>{part.id}</code>
       </div>
       {part.positionApproximate && <p className="note">{ui('positionApprox', lang)}</p>}
+      <p className={`note shape shape-${part.shape.basis}`}>
+        {ui('shapeBasis', lang)}：{ui(part.shape.basis === 'photo' ? 'shapePhoto' : part.shape.basis === 'scan' ? 'shapeScan' : part.shape.basis === 'cad' ? 'shapeCad' : 'shapeSchematic', lang)}
+        {part.shape.source && <> · <SourceLink id={part.shape.source} data={data} lang={lang} /></>}
+      </p>
 
       <ActionBar />
 

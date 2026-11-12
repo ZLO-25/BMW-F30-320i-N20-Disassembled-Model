@@ -62,6 +62,7 @@ a { color: var(--hover); }
 .meta { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
 .meta code { background: var(--panel2); padding: 0 6px; border-radius: 4px; }
 .note { font-size: 12px; color: var(--muted); border-left: 3px solid var(--line); padding-left: 8px; }
+.note.shape-photo, .note.shape-scan, .note.shape-cad { border-left-color: #4caf50; }
 .layer { border-radius: 8px; padding: 8px 10px; margin-top: 10px; }
 .layer h3 { margin-top: 0; color: var(--fg); }
 .layer.universal { background: var(--universal); }

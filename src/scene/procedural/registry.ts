@@ -5,6 +5,7 @@
  */
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { withGrain, GRAIN_SETTINGS, type GrainKind } from './grain'
 
 export type Detail = 'high' | 'mid' | 'low'
@@ -161,6 +162,37 @@ export const cylZ = (d: Detail, r: number, len: number, rTop = r) => {
   const g = cylinderY(d, r, len, rTop)
   g.rotateX(Math.PI / 2)
   return g
+}
+
+/**
+ * R2 連接件：機械看起來「真」，很大一部分靠螺絲頭與管束。
+ *
+ *   六角法蘭螺絲（沿 +Y 長出來）          蝸桿式管束（套在沿 Y 的管子上）
+ *        ┌─┴─┐  ← 六角頭                       ┌──────┐ ← 鋼帶
+ *      ══╧═══╧══ ← 法蘭                        │ ▣    │ ← 蝸桿座
+ *
+ * 回傳一個合併好的幾何，呼叫端照一般 mesh 用（材質用 M.steel / M.darkSteel）。
+ * af = 對邊寬度（M6 法蘭螺絲約 10 mm、M8 約 13 mm）。low 畫質用簡單圓柱。
+ */
+export function hexHead(d: Detail, af = 0.010, h = 0.0055): THREE.BufferGeometry {
+  const rHex = af / Math.sqrt(3)            // 六角形外接圓半徑
+  if (d === 'low') { const g = new THREE.CylinderGeometry(rHex, rHex, h, 6); g.translate(0, h / 2, 0); return g }
+  const flange = new THREE.CylinderGeometry(rHex * 1.25, rHex * 1.3, h * 0.25, segs(d, 20, 12, 8))
+  flange.translate(0, h * 0.125, 0)
+  const head = new THREE.CylinderGeometry(rHex, rHex, h * 0.75, 6)
+  head.translate(0, h * 0.25 + h * 0.375, 0)
+  return mergeGeometries([flange.toNonIndexed(), head.toNonIndexed()])!
+}
+
+export function hoseClamp(d: Detail, r: number, width = 0.009): THREE.BufferGeometry {
+  const band = new THREE.CylinderGeometry(r + 0.0012, r + 0.0012, width, segs(d, 32, 16, 8), 1, true)
+  if (d === 'low') return band
+  const housing = new THREE.BoxGeometry(0.012, width * 1.3, 0.008)
+  housing.translate(0, 0, r + 0.004)
+  const screw = new THREE.CylinderGeometry(0.0025, 0.0025, 0.016, 8)
+  screw.rotateZ(Math.PI / 2)
+  screw.translate(0, 0, r + 0.0085)
+  return mergeGeometries([band.toNonIndexed(), housing.toNonIndexed(), screw.toNonIndexed()])!
 }
 
 /** 沿一串點的管子（水管、油管、增壓管） */

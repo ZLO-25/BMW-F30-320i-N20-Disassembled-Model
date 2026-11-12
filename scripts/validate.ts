@@ -39,6 +39,8 @@ for (const p of parts) {
   for (const s of p.specs) checkSource(`${p.id}.specs.${s.key}`, s.source)
   for (const f of p.removal.fasteners) checkSource(`${p.id}.fasteners "${f.desc}"`, f.source)
   for (const pn of p.partNumbers) checkSource(`${p.id}.partNumbers`, pn.source)
+  checkSource(`${p.id}.shape`, p.shape.source)
+  if (p.shape.basis !== 'schematic' && !p.shape.source) fail(`${p.id}.shape：外形依據是 ${p.shape.basis}，要填 source`)
 }
 
 const toolIds = new Set((tools.success ? tools.data : []).map(t => t.id))

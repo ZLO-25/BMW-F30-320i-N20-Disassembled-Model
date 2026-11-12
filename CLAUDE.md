@@ -143,6 +143,12 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 ## R1 之後（光與環境，2026-11-12）
 - 場景舞台在 `src/scene/Stage.tsx`：`WorkshopEnvironment`（反射 + 背景）、`StageFloor`（水泥地 / 格線）、`SoftContactShadows`、`WorkLight`。修車廠房間與水泥地貼圖在 `workshop.ts`（純 three，有測試）。
 - 背景模式 `stage`：`workshop`（預設）/ `studio`（原本的深色格線），檢視工具裡切換，存在 localStorage `n20.stage.v1`。簡潔模式的顏色補償在 `STUDIO_COLORS`。
-- 接觸陰影不是每格更新：store 的拆裝、爆炸、顯示、車殼模式、變體改變後才重畫 45 格。新增會改變外形的 store 欄位時，加進 `SoftContactShadows` 的相依清單。
+- 接觸陰影不是每格更新：store 的拆裝、爆炸、顯示、車殼模式、變體改變後停 0.65 秒再重畫 2 格。新增會改變外形的 store 欄位時，加進 `SoftContactShadows` 的相依清單。
 - 工作燈跟著鏡頭，距離 target < 2.4 m 才亮；Bloom 只在 high。
 - `cylX/cylY/cylZ` 在 high 會產生有倒角的圓柱（`cylinderY`，半徑 ≥ 8 mm）；外形範圍不變，mid / low 照舊。要刀口邊的特殊零件直接用 `new THREE.CylinderGeometry`。
+
+## R2 之後（引擎室寫實化，2026-11-12）
+- 零件可寫 `shape: { basis: schematic|photo|scan|cad, source }`（外形依據）；不寫 = 示意。非 schematic 一定要有 source（validate 會擋），資訊卡會顯示這一行。照 ZL 實車照片重畫的零件標 `photo` + `zl_owner_photos_2026`。
+- 連接件小幫手在 `registry.ts`：`hexHead(d, af, h)`（六角螺栓頭，底部在 y=0）、`hoseClamp(d, r)`（管束，沿 Y 軸）；`engineParts.ts` 的 `clampLike()` 把沿 Y 的環轉到管子端點方向。low 會自動退成簡單形狀。
+- 照片確認的位置（不要改回去）：**空濾盒是車頭中間、水箱上方的 T 字形盒**（`AIRBOX` 常數，`eng.intake.airbox` 在 (1.8, 0.82, −0.04)）；**副水箱 `eng.cooling.expansion_tank` 在引擎室左前角**（1.72, 0.68, −0.58，掛在 car.root）；引擎飾蓋右前有缺口讓機油加注蓋露出來。
+- 進氣管路徑點 `P_AIRBOX_OUT` → `P_COMP_IN`，改空濾盒位置時兩端一起改。
