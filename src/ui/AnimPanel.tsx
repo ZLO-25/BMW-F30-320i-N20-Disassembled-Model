@@ -1,6 +1,7 @@
 import type { DataBundle } from '../core/loadData'
 import { t, ui, fmt } from '../core/i18n'
 import { useAppStore } from '../store/useAppStore'
+import { EngineRunPanel } from './EngineRunPanel'
 import { animationsFor, ANIM_BY_ID, GEARS, MANUAL_RATIOS, MANUAL_RATIOS_NOTE, AUTO_RATIOS, AUTO_ELEMENTS } from '../scene/animations'
 
 /** 側欄「動畫」分頁：選動畫、拉滑桿或選檔位，下面顯示現在這一段在做什麼 */
@@ -37,7 +38,7 @@ export function AnimPanel({ data }: { data: DataBundle }) {
       let x = first.position.x, y = first.position.y, z = first.position.z
       let cur = first.parent ? data.graph.byId.get(first.parent) : undefined
       while (cur) { x += cur.position.x; y += cur.position.y; z += cur.position.z; cur = cur.parent ? data.graph.byId.get(cur.parent) : undefined }
-      focusOn([x, y, z], d.id === 'power_path' ? 1.3 : 0.75)
+      focusOn([x, y, z], d.id === 'power_path' ? 1.3 : d.id === 'engine_running' ? 0.95 : 0.75)
       // 只標示零件、不切到資訊頁（切頁會把動畫面板藏起來）
       useAppStore.setState({ selectedId: first.id })
     }
@@ -73,6 +74,7 @@ export function AnimPanel({ data }: { data: DataBundle }) {
               )}
             </>
           )}
+          {def.control === 'rpm' && <EngineRunPanel />}
           {def.control === 'gear' && (
             <>
               <div className="gear-row">

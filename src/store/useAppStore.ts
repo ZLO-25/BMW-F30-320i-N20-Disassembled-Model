@@ -6,6 +6,9 @@ import {
   emptyTeardown, removedSet, checkRemove, checkInstall, applyRemove, applyInstall, undoEntry, redoEntry,
   type TeardownState, type HistoryEntry,
 } from '../core/disassembly'
+import { needsBoltSteps } from '../core/boltSteps'
+import type { PaintKey } from '../scene/procedural/registry'
+export const PAINT_KEYS = ['zl_white', 'blue', 'black', 'silver', 'red'] as const
 
 export type BodyMode = 'solid' | 'xray' | 'hidden'
 export type DrawerTab = 'tree' | 'info' | 'tray' | 'anim' | 'learn' | 'maint'
@@ -58,6 +61,9 @@ interface AppState {
   animT: number
   gear: string
   animPlaying: boolean
+  /** R4 引擎運轉：慢動作（預設開，看得清楚活塞與氣門） */
+  engineSlow: boolean
+  setEngineSlow: (v: boolean) => void
   /** 鏡頭對準：改 token 讓 Scene 把鏡頭移到 target */
   focus: { target: [number, number, number]; dist: number; token: number } | null
   selectedId: string | null
@@ -84,6 +90,9 @@ interface AppState {
   sysVis: Record<string, SysVis>
   toolsOpen: boolean
   stage: Stage
+  /** R3 車漆顏色 */
+  paint: PaintKey
+  setPaint: (p: PaintKey) => void
 
   // ── P5 ──
   progress: Progress
@@ -119,8 +128,14 @@ interface AppState {
 
   setMode: (m: Mode) => void
   /** 試著拆下；被擋住時設定 hint 並回傳 false */
-  tryRemove: (g: PartGraph, id: string, opts?: { skipMistakes?: boolean; lang?: Lang }) => boolean
-  tryInstall: (g: PartGraph, root: string) => boolean
+  tryRemove: (g: PartGraph, id: string, opts?: { skipMistakes?: boolean; skipBolts?: boolean; lang?: Lang }) => boolean
+  tryInstall: (g: PartGraph, root: string, opts?: { skipBolts?: boolean }) => boolean
+  /** R5 螺栓級拆裝：開啟時拆裝有工具或螺絲資料的零件，要先一步一步做完 */
+  boltMode: boolean
+  setBoltMode: (v: boolean) => void
+  pendingBolt: { id: string; action: 'remove' | 'install' } | null
+  cancelBolt: () => void
+  finishBolt: (g: PartGraph) => void
   installAll: (g: PartGraph) => void
   undo: () => void
   redo: () => void
@@ -172,6 +187,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   animT: 0,
   gear: '1',
   animPlaying: false,
+  engineSlow: true,
+  setEngineSlow: (engineSlow) => set({ engineSlow }),
   focus: null,
   selectedId: null,
   hoveredId: null,
@@ -197,6 +214,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   sysVis: {},
   toolsOpen: false,
   stage: safeGet('n20.stage.v1') === 'studio' ? 'studio' : 'workshop',
+  paint: (PAINT_KEYS as readonly string[]).includes(safeGet('n20.paint.v1') ?? '') ? safeGet('n20.paint.v1') as PaintKey : 'zl_white',
 
   progress: loadProgress(),
   toolsInHand: new Set(),
@@ -260,6 +278,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       const ms = part ? mistakesFor(part, s.removedIds, s.toolsInHand) : []
       if (ms.length) { set({ pendingMistake: { id, mistakes: ms } }); return false }
     }
+    // R5：螺栓級模式 → 先跳出步驟，做完才真的拆（導覽、故意做錯不跳）
+    if (s.boltMode && !opts?.skipBolts && !opts?.skipMistakes) {
+      const part = g.byId.get(id)
+      if (part && needsBoltSteps(part)) { set({ pendingBolt: { id, action: 'remove' } }); return false }
+    }
     const teardown = applyRemove(s.teardown, r.unit)
     set({
       teardown, removedIds: removedSet(teardown),
@@ -270,12 +293,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     return true
   },
 
-  tryInstall: (g, root) => {
+  tryInstall: (g, root, opts) => {
     const s = get()
     const r = checkInstall(g, s.teardown, root)
     if (!r.ok) {
       if (r.reason === 'blocked') set({ hint: mkHint('blocked_install', root, r.blockers) })
       return false
+    }
+    if (s.boltMode && !opts?.skipBolts) {
+      const part = g.byId.get(root)
+      if (part && needsBoltSteps(part)) { set({ pendingBolt: { id: root, action: 'install' } }); return false }
     }
     const res = applyInstall(s.teardown, root)!
     set({
@@ -291,7 +318,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     for (let guard = 0; guard < 500; guard++) {
       const units = get().teardown.units
       if (!units.length) break
-      if (!get().tryInstall(g, units[units.length - 1].root)) break
+      if (!get().tryInstall(g, units[units.length - 1].root, { skipBolts: true })) break
     }
     set({ hint: null })
   },
@@ -321,6 +348,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   }),
   setToolsOpen: (toolsOpen) => set({ toolsOpen }),
   setStage: (stage) => { safeSet('n20.stage.v1', stage); set({ stage }) },
+  setPaint: (paint) => { safeSet('n20.paint.v1', paint); set({ paint }) },
 
   // ── P5 ──
   setProgress: (progress) => { saveProgress(progress); set({ progress }) },
@@ -340,6 +368,17 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
   cancelMistake: () => set({ pendingMistake: null }),
+  boltMode: safeGet('n20.boltMode.v1') === '1',
+  setBoltMode: (boltMode) => { safeSet('n20.boltMode.v1', boltMode ? '1' : '0'); set({ boltMode }) },
+  pendingBolt: null,
+  cancelBolt: () => set({ pendingBolt: null }),
+  finishBolt: (g) => {
+    const pb = get().pendingBolt
+    if (!pb) return
+    set({ pendingBolt: null })
+    if (pb.action === 'remove') get().tryRemove(g, pb.id, { skipMistakes: true, skipBolts: true })
+    else get().tryInstall(g, pb.id, { skipBolts: true })
+  },
   startGuide: (procId) => set({ guide: { procId, step: 0 }, quiz: null, scenario: null, drawerOpen: true, drawerTab: 'learn', mode: 'teardown' }),
   setGuideStep: (step) => set((s) => (s.guide ? { guide: { ...s.guide, step } } : {})),
   finishGuide: (procId) => { const p = recordProcedure(get().progress, procId); saveProgress(p); set({ progress: p, guide: null }) },

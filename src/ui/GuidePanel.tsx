@@ -50,7 +50,7 @@ export function GuidePanel({ data }: { data: DataBundle }) {
     const hand = new Set(st.toolsInHand); for (const tl of step.tools) hand.add(tl)
     useAppStore.setState({ toolsInHand: hand })
     if (step.action === 'remove') tryRemove(data.graph, step.part, { skipMistakes: true })
-    else tryInstall(data.graph, step.part)
+    else tryInstall(data.graph, step.part, { skipBolts: true })
   }
   const cur = step ? stepState(guide.step) : 'done'
   const alreadyDone = progress.completedProcedures.includes(proc.id)

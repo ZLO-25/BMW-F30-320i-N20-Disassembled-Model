@@ -7,6 +7,8 @@
 import * as THREE from 'three'
 import type { Bilingual } from '../core/schema'
 import type { Variant } from '../core/partGraph'
+import { CYL_X, CYL_NO, STROKE_R, ROD_L, CRANK_ANGLE } from './procedural/engineGeom'
+import { cyclePhase, strokeOf, valveLift, slider, revPerSec, rpmAt, type Stroke } from '../core/engineCycle'
 
 export interface AnimCtx {
   get: (partId: string) => THREE.Object3D | undefined
@@ -14,6 +16,9 @@ export interface AnimCtx {
   gear: string       // 'R','N','1'…'8'
   time: number       // 秒
   variant: Variant
+  dt?: number        // 這一格經過的秒數（R4 引擎運轉用）
+  playing?: boolean
+  slow?: boolean     // 慢動作
 }
 
 export interface AnimPhase { until: number; label: Bilingual }
@@ -23,7 +28,7 @@ export interface AnimDef {
   variant: Variant | 'both'
   title: Bilingual
   desc: Bilingual
-  control: 'slider' | 'gear'
+  control: 'slider' | 'gear' | 'rpm'
   sliderLabels?: [Bilingual, Bilingual]
   /** 滑桿動畫可以分段說明：t 落在哪一段就顯示那段文字 */
   phases?: AnimPhase[]
@@ -65,6 +70,8 @@ export const GEARS: Record<Variant, string[]> = { manual: ['R', 'N', '1', '2', '
 
 /** 動畫重置：把所有會被動的東西歸零（換動畫或關掉時呼叫） */
 export function resetAnim(get: AnimCtx['get']) {
+  crank = 0
+  poseEngine(get, 0, false)
   for (const id of ALL_PARTS) {
     const o = get(id)
     if (!o) continue
@@ -221,7 +228,66 @@ const powerPath: AnimDef = {
   },
 }
 
-export const ANIMATIONS: AnimDef[] = [clutchDisengage, synchroShift, tcLockup, powerPath]
+// ───────────────────────── R4：引擎運轉 ─────────────────────────
+/** 曲軸目前角度（弧度）。放模組裡累加，因為轉速會變，不能用 time × 固定轉速 */
+let crank = 0
+export const engineStatus = () => {
+  const deg = ((crank * 180) / Math.PI) % 720
+  return { deg, strokes: [1, 2, 3, 4].map(c => strokeOf(cyclePhase(deg, c))) as Stroke[] }
+}
+const LIFT = 0.008                      // 氣門開度（視覺值）
+const STROKE_GLOW: Partial<Record<Stroke, THREE.Color>> = { power: new THREE.Color(0xff6a00), intake: new THREE.Color(0x2a7fff) }
+const ENGINE_SPIN: [string, number][] = [
+  ['eng.block.crankshaft', 1], ['eng.front.vibration_damper', 1], ['trans.manual.dmf', 1], ['trans.auto.flexplate', 1],
+  ['eng.head.camshaft_intake', 0.5], ['eng.head.camshaft_exhaust', 0.5], ['eng.timing.vanos_intake', 0.5], ['eng.timing.vanos_exhaust', 0.5],
+  ['eng.acc.alternator', 0.08 / 0.03], ['eng.acc.ac_compressor', 0.08 / 0.055],   // 皮帶盤半徑比（示意尺寸）
+]
+/** 把引擎擺到曲軸角 a（弧度）的樣子 */
+export function poseEngine(get: AnimCtx['get'], a: number, glowOn = true) {
+  for (const [id, k] of ENGINE_SPIN) { const o = get(id); if (o) o.rotation.x = a * k }
+  const bal = get('eng.block.balance_shafts')
+  for (const i of [0, 1]) { const b = byName(bal, `bal_${i}`); if (b) b.rotation.x = (i ? 2 : -2) * a }
+  const set = get('eng.block.piston_rod_set')
+  const valves = get('eng.head.valves')
+  const deg = (a * 180) / Math.PI
+  CYL_X.forEach((_, i) => {
+    const s = slider(CRANK_ANGLE[i] + a, STROKE_R, ROD_L)
+    const piston = byName(set, `piston_${i}`), rod = byName(set, `rod_${i}`)
+    const y0 = (piston?.userData.y0 ?? (piston ? (piston.userData.y0 = piston.position.y - slider(CRANK_ANGLE[i], STROKE_R, ROD_L).pistonY) : 0)) as number
+    if (piston) piston.position.y = y0 + s.pistonY
+    if (rod) {
+      const ry0 = (rod.userData.y0 ??= rod.position.y - slider(CRANK_ANGLE[i], STROKE_R, ROD_L).py) as number
+      rod.position.y = ry0 + s.py
+      rod.position.z = s.pz
+      rod.rotation.x = -s.rodAngle
+    }
+    const phase = cyclePhase(deg, CYL_NO[i])
+    const st = strokeOf(phase)
+    const vi = byName(valves, `vi_${i}`), ve = byName(valves, `ve_${i}`)
+    if (vi) vi.position.y = -LIFT * valveLift(phase, 'intake')
+    if (ve) ve.position.y = -LIFT * valveLift(phase, 'exhaust')
+    // 做功：活塞頂發橘光（越剛點火越亮）；進氣：淡藍
+    const c = glowOn ? STROKE_GLOW[st] : undefined
+    glow(piston, c ?? OFF, c ? (st === 'power' ? 1 - (phase / 180) * 0.7 : 0.35) : 0)
+  })
+}
+
+const engineRunning: AnimDef = {
+  id: 'engine_running', variant: 'both', control: 'rpm',
+  title: { zh: '引擎運轉：四行程與轉動件', en: 'Engine running: four strokes and moving parts' },
+  desc: {
+    zh: '曲軸轉兩圈，每一缸各完成一次「進氣 → 壓縮 → 做功 → 排氣」。四缸輪流點火，所以任何時候都有一缸在做功。凸輪軸轉速是曲軸的一半，平衡軸是兩倍（反向轉、抵銷四缸引擎的二次振動）。橘光 = 正在做功，藍光 = 正在進氣。點火順序 1-3-4-2 是直列四缸常見的順序（N20 原廠資料待查證）；氣門正時簡化成整個行程開著。',
+    en: 'In two crank turns every cylinder completes intake → compression → power → exhaust once. The four cylinders fire in turn, so one is always on its power stroke. The camshafts turn at half crank speed, the balance shafts at twice (counter-rotating to cancel the four-cylinder second-order shake). Orange = power stroke, blue = intake. The 1-3-4-2 firing order is the usual inline-four order (N20 factory figure unverified); valve timing is simplified to open for the whole stroke.',
+  },
+  sliderLabels: [{ zh: '低轉速', en: 'Low rpm' }, { zh: '7,000 rpm 紅線', en: '7,000 rpm redline' }],
+  parts: ['eng.block.crankshaft', 'eng.block.piston_rod_set', 'eng.head.camshaft_intake', 'eng.head.camshaft_exhaust', 'eng.head.valves', 'eng.block.balance_shafts', 'eng.front.vibration_damper', 'eng.acc.alternator', 'eng.acc.ac_compressor', 'eng.timing.vanos_intake', 'eng.timing.vanos_exhaust', 'trans.manual.dmf', 'trans.auto.flexplate'],
+  apply: ({ get, t, dt = 0, playing, slow = true }) => {
+    if (playing) crank += dt * revPerSec(rpmAt(t), slow) * Math.PI * 2
+    poseEngine(get, crank)
+  },
+}
+
+export const ANIMATIONS: AnimDef[] = [engineRunning, clutchDisengage, synchroShift, tcLockup, powerPath]
 export const ANIM_BY_ID = new Map(ANIMATIONS.map(a => [a.id, a]))
 const ALL_PARTS = [...new Set(ANIMATIONS.flatMap(a => a.parts))]
 export const animationsFor = (variant: Variant) => ANIMATIONS.filter(a => a.variant === 'both' || a.variant === variant)

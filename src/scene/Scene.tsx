@@ -10,7 +10,7 @@ import { useAppStore } from '../store/useAppStore'
 import { PartNode, PartRegistryCtx, ghostTuning } from './PartNode'
 import { AnimationDriver } from './AnimationDriver'
 import { PerfStats, statsEnabled } from './PerfStats'
-import { WorkshopEnvironment, StageFloor, SoftContactShadows, WorkLight, STUDIO_COLORS } from './Stage'
+import { WorkshopEnvironment, StageFloor, SoftContactShadows, WorkLight, PaintSync, STUDIO_COLORS } from './Stage'
 import type { Detail } from './procedural'
 
 const CAMERA_POS = new THREE.Vector3(2.7, 1.5, 2.3)
@@ -122,6 +122,7 @@ export function Scene({ data }: { data: DataBundle }) {
       <StageFloor shadows={shadows} colors={bg} />
       <SoftContactShadows detail={detail} />
       <WorkLight />
+      <PaintSync />
       <PartRegistryCtx.Provider value={registry}>
         {data.graph.roots.map(r => <PartNode key={r.id} part={r} graph={data.graph} detail={detail} shadows={shadows} />)}
         <AnimationDriver />

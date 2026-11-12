@@ -19,6 +19,7 @@ import { ContactShadows, Grid } from '@react-three/drei'
 import { useAppStore } from '../store/useAppStore'
 import { buildWorkshop, disposeWorkshop, concreteMaterial } from './workshop'
 import type { Detail } from './procedural'
+import { applyPaint } from './procedural/registry'
 
 /** 背景與格線顏色（簡潔模式）。開 AO 時最後的 ACES 會把顏色壓暗，所以那組先調亮（U6 的補償，見 CLAUDE.md） */
 export const STUDIO_COLORS = {
@@ -146,4 +147,13 @@ export function WorkLight() {
     l.intensity = k * k * 3.2 * dist * dist
   })
   return <spotLight ref={light} angle={0.5} penumbra={0.85} decay={2} distance={0} color="#fff4e6" castShadow={false} />
+}
+
+/** R3 車漆：選單換顏色時直接改場景裡所有車漆材質（之後新載入的零件也會用新顏色） */
+export function PaintSync() {
+  const paint = useAppStore(s => s.paint)
+  const scene = useThree(s => s.scene)
+  applyPaint(paint)   // 先設好，之後才產生的零件就會是這個顏色（放在零件之前渲染）
+  useEffect(() => { applyPaint(paint, scene) }, [paint, scene])
+  return null
 }
