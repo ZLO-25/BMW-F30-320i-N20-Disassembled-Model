@@ -414,3 +414,27 @@ p.verdict { margin: 0; }
 @media (max-width: 760px) {
   .photo-panel { left: 10px; right: 10px; width: auto; max-height: 45%; }
 }
+
+/* G3 手排換檔台 */
+.shift-panel { display: flex; flex-direction: column; gap: 8px; outline: none; }
+.shift-panel:focus-visible { box-shadow: 0 0 0 2px var(--accent, #ffb300); border-radius: 6px; }
+.shift-title { margin: 0; font-size: 14px; }
+.rpm-row { display: grid; grid-template-columns: 56px 1fr 84px; gap: 8px; align-items: center; font-size: 12px; }
+.rpm-bar { height: 10px; background: rgba(255,255,255,.1); border-radius: 5px; overflow: hidden; }
+.rpm-bar i { display: block; height: 100%; background: #ffb300; transition: width .12s linear; }
+.rpm-bar i.hot { background: #ff5252; }
+.rpm-val { text-align: right; font-variant-numeric: tabular-nums; }
+.gate { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.gate-btn, .gate-n { min-height: 36px; font-weight: 700; }
+.gate-n { grid-column: 1 / -1; min-height: 28px; font-weight: 500; opacity: .85; }
+.gate-btn.cur { outline: 2px solid #00e676; }
+.gate-btn.on, .gate-n.on { background: #ffb300; color: #1a1a1a; }
+.pedals { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pedal { min-height: 44px; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.pedal.on { background: #ff5252; color: #fff; }
+.shift-steps li.on { color: #ffb300; font-weight: 700; }
+.shift-opts { flex-wrap: wrap; }
+@media (pointer: coarse), (max-width: 700px) { .gate-btn, .gate-n { min-height: 44px; } .shift-opts label { min-height: 44px; display: inline-flex; align-items: center; } }
+.shift-ch { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
+.shift-ch li.done { color: #00e676; }
+.shift-steps { list-style: none; padding-left: 0; }
