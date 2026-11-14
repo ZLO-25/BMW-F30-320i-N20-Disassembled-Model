@@ -184,3 +184,9 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 - 手機照片 EXIF 的焦距不一定可信：ZL 側面照記 24 mm，反推實際約 45 mm（裁切 / 變焦），而且畫面中心往下偏（`dy ≈ −23%`）。
 - **前後懸用官方值**（`bmw_press_f30_us_2017`）：前 790、後 1,044 mm，車長 4,643 mm。`bodyShell.ts` 的 `stretchX()` 把照片描的 X 換成官方比例；hw / hs（俯視輪廓）直接用最終座標寫，兩端是圓弧（車頭圓鼻、車尾兩角收 16 cm）。
 - 車頭車尾的燈、進氣口一律用 `endX(end, z)` / `endYaw(end, z)` 貼著弧面放，改 hw 之後不用逐一調位置。
+
+## R7 之後（外觀：輪胎、車漆、燈具，2026-11-12，見 docs/R7_EXTERIOR_REPORT.md）
+- 輪子是 `wheel_v2`（`chassisParts.ts`）：225/45 R18 斷面旋轉輪胎 + 18 吋五組雙輻；輪面朝 +Z，所以**左側輪 `rotation.y = 180`**。輪子在零件內下移 1.5 cm 貼地（輪心 0.345 是照片量的）。
+- 白漆是素色漆：`PAINTS.zl_white` 金屬度 0（有金屬度會把暖色燈染成粉橘）。
+- 車頭 / 車尾斜面用 `rakeX(x, y)`（`bodyShell.ts`）：車皮頂點、燈具、水箱罩、下擾流都要經過它。新增貼在車頭車尾的東西時位置寫 `rakeX(endX(...) 或 surfX(...), y)`。
+- 頭燈尾燈用 `lampSkin()` 貼著車皮做（`surfX` 二分搜尋截面邊界）；外形常數 `HEAD` / `TAILL`。

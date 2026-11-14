@@ -275,5 +275,13 @@
   "type": "manufacturer",
   "accessed": "2026-11-12",
   "note": "官方技術資料（2017 年式 F30 LCI，美規，英吋）：車長 182.8 in（4,643 mm）、寬 71.3 in（1,811 mm）、高 56.3 in（1,430 mm，後驅）、軸距 110.6 in（2,809 mm）、輪距 前 60.3 / 後 61.9 in（1,532 / 1,572 mm）、前懸 31.1 in（790 mm）、後懸 41.1 in（1,044 mm）、離地 5.5 in（140 mm）。換算 mm 是我們算的。台灣 M 套件保桿的懸長沒有另外列出，沿用這組。"
+ },
+ {
+  "id": "michelin_f30_320i_sizes",
+  "title": "Michelin Thailand: BMW Serie 3 (F30) Saloon 2015, 320i (2.0 L 184) tire sizes",
+  "url": "https://en.michelin.co.th/auto/manufacturers/bmw/serie-3/f30-berline/2015/320i-2.0-l-184",
+  "type": "manufacturer",
+  "accessed": "2026-11-12",
+  "note": "列出 205/60 R16、225/55 R16、225/50 R17、225/45 R18，以及成對的 225/45 R18 − 255/40 R18 等（頁面沒寫是否前後不同寬）。輪圈寬度與 ET 沒有列。3D 輪胎用 225/45 R18（ZL 實車是 18 吋）。"
  }
 ]

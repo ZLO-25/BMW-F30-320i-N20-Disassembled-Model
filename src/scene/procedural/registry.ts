@@ -44,7 +44,8 @@ export const COLORS = {
  * 換顏色時 `applyPaint()` 直接改場景裡所有車漆材質，不用重建模型。
  */
 export const PAINTS = {
-  zl_white: { color: 0xe4e5e3, metalness: 0.35, roughness: 0.3 },
+  // 外觀重做：白色是素色漆（沒有金屬粉），金屬度 0；以前 0.35 會把修車廠暖色燈反射染成粉橘色
+  zl_white: { color: 0xd9dbd9, metalness: 0, roughness: 0.22 },
   blue: { color: COLORS.body, metalness: 0.6, roughness: 0.32 },
   black: { color: 0x0e1013, metalness: 0.55, roughness: 0.28 },
   silver: { color: 0xa9adb2, metalness: 0.8, roughness: 0.3 },
