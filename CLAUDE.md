@@ -170,7 +170,7 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 - `npm run e2e` 現在會檢查：閒置 3 秒 0 格、每種操作（拖曳、爆炸、剖面、背景、車殼模式、拆下、動畫）畫面真的變、之後會停、L3 畫質、手動切換畫質。新增會影響畫面的操作時，在 `scripts/e2e-smoke.cjs` 加一條 `act(...)`。
 - **畫質**：`src/core/quality.ts` 六級階梯（L0–L5），`?quality=low|mid|high` 對應 L0/L1/L5，`?level=0..5` 直接指定；網址指定時不自動降級。檢視工具有「畫質：自動／流暢／均衡／精緻」，選擇存 localStorage `n20.quality.v1`。新增特效要加進 `QualityProfile`，不要在元件裡自己判斷裝置。
 - AO 可以在執行中關掉：store 的 `postfx` 旗標會讓 `PartNode` 重套透視透明度（`ghostTuning`）。
-- **載入**：`index.html` 有純 HTML 載入畫面，`src/boot.ts` 推進度；第一格前用 `compileAsync` 編譯著色器（Canvas 在這之前 `frameloop="never"`）。`PostFX.tsx` 與教學資料（`core/learnData.ts`，用 `loadLearnData()` / `useFullData()`）是動態載入，**不要從首包會用到的檔案直接 import 它們**。vite 的 `postfx` chunk 只能單向依賴 vendor / three；改分包後一定跑 `npm run e2e`。
+- **載入**：`index.html` 只有一個純文字載入畫面（沒有進度條、沒有分階段），第一格畫出來就收（`FirstFrame`），最久 6 秒保險收掉。**不要再加進度條或 compileAsync 閘門**（ZL 2026-11-14 覺得更糟）。`PostFX.tsx` 與教學資料（`core/learnData.ts`，用 `loadLearnData()` / `useFullData()`）是動態載入，**不要從首包會用到的檔案直接 import 它們**。vite 的 `postfx` chunk 只能單向依賴 vendor / three；改分包後一定跑 `npm run e2e`。
 - 射線：每個夠大的 mesh 建 BVH（three-mesh-bvh，`ModelResolver.tsx`，`?bvh=0` 可關），拖曳超過 4 px 時 `DragGuard` 暫停偵測；`disposeObject()` 會一併 `disposeBoundsTree()`。
 - 量測：`?bench=1`（一鍵跑分，結果可複製）、`?stats=1`、`npm run perf`（headless，輸出 docs/perf/latest.json）、`npm run ui`（版面與按鈕大小，輸出 docs/e5/）。改效能相關的東西前後都跑一次，數字寫進報告。
 - 介面：手機把次要控制項收進「⋯」（CSS `.topbar-more`）；手機按鈕最小 44 px、桌機 24 px（`styles.css`）；側欄分頁是 `role=tablist`，左右鍵切換；預設模式是「檢視」；預設視角依畫面長寬比算（`defaultView()`），資訊卡有「看這個零件」；第一次使用引導存 `n20.onboard.v1`。
