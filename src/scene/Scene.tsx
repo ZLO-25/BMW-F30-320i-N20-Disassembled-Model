@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useContext, useEffect, useMemo, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
@@ -9,7 +9,7 @@ import { PartNode, PartRegistryCtx, ghostTuning } from './PartNode'
 import { AnimationDriver } from './AnimationDriver'
 import { PerfStats, statsEnabled, benchEnabled } from './PerfStats'
 import { Bench } from './Bench'
-import { bootSet, bootDone } from '../boot'
+import { bootDone } from '../boot'
 import { redraw, tickRedraw } from './redraw'
 import { OverlayCamera, DEFAULT_FOV } from './OverlayCamera'
 import { useOverlayStore, overlayCamera } from '../store/useOverlayStore'
@@ -159,25 +159,6 @@ function RedrawDriver({ shadows }: { shadows: boolean }) {
 }
 
 /**
- * E3 開機：場景掛載後先用 compileAsync 把著色器編好（支援平行編譯的瀏覽器上不會卡住主執行緒，載入畫面的動畫還在動），
- * 編完才開始畫第一格（Canvas 在這之前是 frameloop="never"）。第一格畫出來就收掉載入畫面。
- * 不支援的瀏覽器上 compileAsync 會退回同步編譯，效果和以前一樣，不會更差。
- */
-function BootGate({ onReady }: { onReady: () => void }) {
-  const { gl, scene, camera } = useThree()
-  useEffect(() => {
-    bootSet(66, '組裝零件、編譯著色器… / Building parts, compiling shaders…')
-    let alive = true
-    const id = setTimeout(async () => {   // 等一個 tick，讓零件的 primitive 都掛上 scene
-      try { await gl.compileAsync(scene, camera) } catch { /* 編譯失敗就讓第一次繪製去報錯 */ }
-      if (alive) onReady()
-    }, 0)
-    return () => { alive = false; clearTimeout(id) }
-  }, [gl, scene, camera, onReady])
-  return null
-}
-
-/**
  * E4：拖曳旋轉時停止「滑鼠掃過哪個零件」的偵測。按下後移動超過 4 px 才算拖曳（單純點一下不受影響，點選零件照常）；
  * 放開後下一個 tick 恢復，所以拖曳結束那一下不會誤點到零件。
  */
@@ -213,7 +194,6 @@ function FirstFrame() {
   useFrame(() => {
     if (done.current) return
     done.current = true
-    bootSet(100, '完成 / Ready')
     bootDone()
   }, -800)
   return null
@@ -223,8 +203,6 @@ export function Scene({ data }: { data: DataBundle }) {
   const controls = useRef<OrbitControlsImpl>(null)
   const registry = useMemo(() => new Map<string, THREE.Object3D>(), [])
   const select = useAppStore(s => s.select)
-  const [ready, setReady] = useState(false)
-  const onReady = useCallback(() => { setReady(true); redraw() }, [])
   const level = useAppStore(s => s.qualityLevel)
   const qmode = useAppStore(s => s.qualityMode)
   const mobileDevice = useAppStore(s => s.mobile)
@@ -246,14 +224,13 @@ export function Scene({ data }: { data: DataBundle }) {
   return (
     <Canvas
       key={profile.nativeAA ? 'aa' : 'plain'}   // 原生抗鋸齒在建立繪圖環境時決定，只有 L2 ↔ 其他級之間切換才需要重建畫布
-      frameloop={ready ? 'demand' : 'never'}
+      frameloop="demand"
       dpr={dpr}
       shadows={shadows}
       camera={{ position: CAMERA_POS.toArray(), fov: DEFAULT_FOV, near: 0.05, far: 100 }}
       raycaster={{ firstHitOnly: true } as never}   // E4：配合 BVH，只回傳最近的一個三角形
       onPointerMissed={() => select(null)}
       gl={{ antialias: profile.nativeAA, powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}>
-      <BootGate onReady={onReady} />
       <FirstFrame />
       <DragGuard />
       <InvalidateOnStore />
