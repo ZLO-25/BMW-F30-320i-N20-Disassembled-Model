@@ -6,6 +6,7 @@
  *   name = 'spin'        會被連續旋轉的 group（繞 X 軸）
  *   name = 'fingers'     壓板膜片彈簧指；'ring' 壓板壓環；'bearing' 分離軸承
  *   name = 'sleeve'      同步器套筒；'ring_l' / 'ring_r' 同步環；'gear_l' / 'gear_r' 兩側齒輪
+ *   name = 'fork_1_2' / 'fork_3_4' / 'fork_5_6'  撥叉（跟套筒一起沿 X 滑）；'stick' 排檔桿（繞底座傾斜）
  *   name = 'gear_<n>'    輸出軸 / 副軸上第 n 檔的齒輪；'pack_<A-E>' 離合器組；'set_<1-4>' 行星組
  *   name = 'pump' / 'turbine' / 'stator' / 'lockup'  扭力變換器
  *   userData.shell = true 外殼：動畫時可以半透明看內部
@@ -84,19 +85,27 @@ registerProcedural('output_flange_v1', (d) => {
 
 registerProcedural('shift_lever_v1', (d) => grp('',
   mesh(rbox(d, 0.05, 0.02, 0.04, 0.005), M.castAl()),
-  mesh(cylY(d, 0.006, 0.2), M.steel(), 0, 0.11, 0),
-  mesh(new THREE.SphereGeometry(0.02, segs(d, 16, 10, 6), segs(d, 10, 6, 4)), M.glossPlastic(), 0, 0.22, 0),
+  // 'stick'：桿身 + 球頭，旋轉中心在底座（G0；換檔台會依檔位傾斜）
+  grp('stick',
+    mesh(cylY(d, 0.006, 0.2), M.steel(), 0, 0.11, 0),
+    mesh(new THREE.SphereGeometry(0.02, segs(d, 16, 10, 6), segs(d, 10, 6, 4)), M.glossPlastic(), 0, 0.22, 0)),
   mesh(rbox(d, 0.06, 0.01, 0.015, 0.003), M.steel(), -0.03, 0.01, 0),
 ))
 
+/** 撥叉：軌道（長桿）固定不動；每支叉（半圓叉 + 變速臂）包成 fork_1_2 / fork_3_4 / fork_5_6，換檔台會讓它跟套筒一起沿 X 滑。
+ *  零件 position.x = -0.30，叉的區域 X = 同步器 X + 0.30（G0 修正：原本是 +0.33，叉比套筒前 3 cm） */
+const FORK_IDS = ['1_2', '3_4', '5_6'] as const
 registerProcedural('shift_forks_v1', (d) => {
   const g = new THREE.Group()
   for (const [i, x] of [-0.2, -0.33, -0.46].entries()) {
-    g.add(mesh(cylX(d, 0.005, 0.36), M.steel(), -0.33 - (-0.33), 0.03 + i * 0.012, 0.03 - i * 0.02))
+    g.add(mesh(cylX(d, 0.005, 0.36), M.steel(), 0, 0.03 + i * 0.012, 0.03 - i * 0.02))
     // 叉：半圓弧
     const fork = new THREE.TorusGeometry(0.045, 0.004, 6, segs(d, 20, 12, 8), Math.PI).rotateY(Math.PI / 2).rotateX(Math.PI)
-    g.add(mesh(fork, M.darkSteel(), x + 0.33, -0.06, 0))
-    g.add(mesh(rbox(d, 0.008, 0.07, 0.01, 0.002), M.darkSteel(), x + 0.33, -0.015 + i * 0.006, 0.03 - i * 0.02))
+    const f = grp(`fork_${FORK_IDS[i]}`,
+      mesh(fork, M.darkSteel(), 0, -0.06, 0),
+      mesh(rbox(d, 0.008, 0.07, 0.01, 0.002), M.darkSteel(), 0, -0.015 + i * 0.006, 0.03 - i * 0.02))
+    f.position.x = x + 0.30
+    g.add(f)
   }
   return g
 })

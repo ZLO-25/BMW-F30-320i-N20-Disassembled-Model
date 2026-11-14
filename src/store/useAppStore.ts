@@ -66,6 +66,15 @@ interface AppState {
   /** R4 引擎運轉：慢動作（預設開，看得清楚活塞與氣門） */
   engineSlow: boolean
   setEngineSlow: (v: boolean) => void
+  /** G2 手排換檔台：離合器 / 煞車按住中、自動離合器（預設開）、慢動作 */
+  clutchHeld: boolean
+  brakeHeld: boolean
+  autoClutch: boolean
+  shiftSlow: boolean
+  setClutchHeld: (v: boolean) => void
+  setBrakeHeld: (v: boolean) => void
+  setAutoClutch: (v: boolean) => void
+  setShiftSlow: (v: boolean) => void
   /** 鏡頭對準：改 token 讓 Scene 把鏡頭移到 target */
   focus: { target: [number, number, number]; dist: number; token: number } | null
   /** E5：「看這個零件」：Scene 依該零件的世界包圍盒算鏡頭位置 */
@@ -224,6 +233,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   animPlaying: false,
   engineSlow: true,
   setEngineSlow: (engineSlow) => set({ engineSlow }),
+  clutchHeld: false,
+  brakeHeld: false,
+  autoClutch: true,
+  shiftSlow: false,
+  setClutchHeld: (clutchHeld) => set({ clutchHeld }),
+  setBrakeHeld: (brakeHeld) => set({ brakeHeld }),
+  setAutoClutch: (autoClutch) => set({ autoClutch }),
+  setShiftSlow: (shiftSlow) => set({ shiftSlow }),
   focus: null,
   focusPartReq: null,
   onboarded: safeGet('n20.onboard.v1') === '1',
@@ -288,11 +305,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   /** 換變速箱 = 換一個世界：托盤、歷史、選取全部歸零 */
   setVariant: (variant) => {
     safeSet('n20.variant', variant)
-    set({ variant, variantModalOpen: false, teardown: emptyTeardown(), removedIds: new Set(), history: [], future: [], hint: null, selectedId: null, anim: null, animT: 0, gear: '1', guide: null, scenario: null })
+    set({ variant, variantModalOpen: false, teardown: emptyTeardown(), removedIds: new Set(), history: [], future: [], hint: null, selectedId: null, anim: null, animT: 0, gear: '1', clutchHeld: false, brakeHeld: false, guide: null, scenario: null })
   },
   setVariantModalOpen: (variantModalOpen) => set({ variantModalOpen }),
   setCompareOpen: (compareOpen) => set({ compareOpen }),
-  setAnim: (anim) => set({ anim, animT: 0, animPlaying: false }),
+  setAnim: (anim) => set({ anim, animT: 0, animPlaying: false, clutchHeld: false, brakeHeld: false }),
   setAnimT: (animT) => set({ animT }),
   setGear: (gear) => set({ gear }),
   setAnimPlaying: (animPlaying) => set({ animPlaying }),
