@@ -200,7 +200,7 @@ const UI = {
   shiftCh_reverse: { zh: '停車後打倒檔並倒車', en: 'Stop, then engage reverse and back up' },
   shiftCh_manual_clutch: { zh: '關掉自動離合器，自己踩離合器完成一次換檔', en: 'Auto clutch off: complete a shift with your own clutch' },
   shiftRatioNow: { zh: '齒比 {r} : 1', en: 'Ratio {r} : 1' },
-  engineSoundNote: { zh: '聲音是依轉速即時合成的示意音（點火頻率 = 轉速 ÷ 60 × 2），不是 N20 的錄音。慢動作只影響畫面，聲音照實際轉速。', en: 'The sound is synthesised live from engine speed (firing frequency = rpm ÷ 60 × 2); it is not a recording of an N20. Slow motion only affects the picture; the sound follows the real speed.' },
+  engineSoundNote: { zh: '聲音是 ZL 實車（F30 320i N20）的錄音：冷車怠速約 1,430 rpm、補油約 2,800 rpm 兩段，其他轉速靠兩段交叉淡化與變速推算，所以 4,000 rpm 以上只是近似。慢動作只影響畫面，聲音照實際轉速。', en: 'The sound is a recording of a real F30 320i (N20): cold idle at about 1,430 rpm and a throttle blip at about 2,800 rpm. Other speeds are crossfaded and pitch-shifted from those two, so above 4,000 rpm it is only an approximation. Slow motion only affects the picture; the sound follows the real speed.' },
   cylinder: { zh: '{n} 缸', en: 'Cyl {n}' },
   strokeIntake: { zh: '進氣', en: 'Intake' },
   strokeCompression: { zh: '壓縮', en: 'Compression' },
