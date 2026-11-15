@@ -212,3 +212,8 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 
 ## 動畫合併（手排換檔台 + 動力路徑）之後
 - 手排的「各檔位動力路徑」已併進 `manual_shift`（換檔台裡的 `PowerPath` 元件，`ShiftPanel.tsx`）；`power_path` 動畫在手排清單隱藏（`AnimDef.hiddenIn`），自排與對照模式（`CompareView`）照舊使用。舊的 `power_path` 選擇或學習目標在手排會經 `resolveAnim()` 轉到 `manual_shift`。
+
+## 排氣車底段改線之後（2026-11-15）
+- 排氣三件（`downpipe_v1` / `exhaust_mid_v1` / `muffler_v1`）的零件原點、接點 J0–J2、各段中心線都在 `src/scene/procedural/exhaustGeom.ts`；產生器用「世界座標 − 原點」算區域座標。**改原點時 `exhaustGeom.ts` 與 `data/parts/exhaust.json` 要一起改**。
+- 車底段走 **y 0.15 / z 0.20**，從副車架與後軸（底面 y ≥ 0.215）下方穿過，到 x −1.67 才爬升進消音器箱體；不要再把進口抬到 y 0.25（會穿過差速器法蘭、傳動軸防塵套、後下臂、後束桿與副車架橫樑）。
+- `src/scene/procedural/exhaust.test.ts` 守住三件事：資料座標 = 原點常數、兩個零件的開口在接點上且全程連續、車底段不穿過 `drv.*` / `chs.rear_*` / `chs.trans_crossmember` 的任何 mesh（逐 mesh AABB）。動後軸或排氣之後一定要跑。
