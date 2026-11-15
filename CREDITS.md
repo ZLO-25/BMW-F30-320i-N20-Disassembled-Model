@@ -13,8 +13,8 @@
 
 ## 聲音
 
-引擎聲目前是程式即時合成（`src/scene/engineSound.ts`），沒有使用外部錄音。之後加入的實車錄音（`public/sounds/engine/`）只能是自己錄的或 CC0 / CC-BY，登記在下表。
+引擎聲用 ZL 自己錄的實車錄音；沒有錄音時退回程式即時合成（`src/scene/engineSound.ts`）。實車錄音（`public/sounds/engine/`）只能是自己錄的或 CC0 / CC-BY，登記在下表。
 
 | 錄音 | 作者 | 授權 | 網址 | 用途 |
 |---|---|---|---|---|
-| （尚無） | | | | |
+| `public/sounds/engine/zl_idle_1430.m4a`、`zl_rev_2800.m4a` | ZL（車主自錄，F30 320i N20） | 專案作者自有，授權本專案使用 | — | 引擎運轉 / 換檔台的引擎聲 |

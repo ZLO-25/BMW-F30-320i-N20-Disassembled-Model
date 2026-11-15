@@ -25,6 +25,8 @@ export type SampleMix = { index: number; gain: number; rate: number }
 /** 播放速度上下限：超過這個範圍音色會明顯變調（像花栗鼠 / 慢速錄音帶）。 */
 export const RATE_MIN = 0.5
 export const RATE_MAX = 2
+/** 最高那段錄音往上推的上限：錄音只到 2,800 rpm，要撐到 7,000 rpm 紅線，只好推到 2.6 倍（高轉會有點「卡通感」）。 */
+export const RATE_TOP_MAX = 2.6
 
 /**
  * 依轉速算每段錄音的音量與播放速度。samples 要依 rpm 由小到大排好。
@@ -35,7 +37,7 @@ export function mixSamples(samples: readonly EngineSample[], rpm: number): Sampl
   const rate = (i: number) => clamp(rpm / samples[i].rpm, RATE_MIN, RATE_MAX)
   if (rpm <= samples[0].rpm) return [{ index: 0, gain: 1, rate: rate(0) }]
   const last = samples.length - 1
-  if (rpm >= samples[last].rpm) return [{ index: last, gain: 1, rate: rate(last) }]
+  if (rpm >= samples[last].rpm) return [{ index: last, gain: 1, rate: clamp(rpm / samples[last].rpm, RATE_MIN, RATE_TOP_MAX) }]
   let i = 0
   while (samples[i + 1].rpm < rpm) i++
   const a = samples[i].rpm, b = samples[i + 1].rpm

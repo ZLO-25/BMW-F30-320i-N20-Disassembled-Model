@@ -16,7 +16,7 @@ import { mixSamples, synthCycle, rpmLoad, SYNTH_BASE_RPM, validateSamples, type 
 
 type Voice = { src: AudioBufferSourceNode; gain: GainNode }
 type Nodes = {
-  ctx: AudioContext; master: GainNode; lp: BiquadFilterNode
+  ctx: AudioContext; master: GainNode; lp: BiquadFilterNode; body: BiquadFilterNode
   synth: Voice; synthLevel: GainNode
   noiseGain: GainNode; bp: BiquadFilterNode
   samples: { list: EngineSample[]; voices: Voice[]; level: GainNode } | null
@@ -94,7 +94,7 @@ export function startEngineSound(rpm: number) {
   noise.connect(bp).connect(noiseGain).connect(master)
   noise.start()
 
-  const me: Nodes = { ctx, master, lp, synth, synthLevel, noiseGain, bp, samples: null, rpm }
+  const me: Nodes = { ctx, master, lp, body, synth, synthLevel, noiseGain, bp, samples: null, rpm }
   n = me
   setEngineRpm(rpm)
   master.gain.setTargetAtTime(0.55, ctx.currentTime, 0.15)
@@ -130,7 +130,8 @@ export function setEngineRpm(rpm: number) {
       v.gain.gain.setTargetAtTime(m ? m.gain * (list[i].gain ?? 1) : 0, t, k)
       if (m) v.src.playbackRate.setTargetAtTime(m.rate, t, k)
     })
-    n.lp.frequency.setTargetAtTime(12000, t, k) // 錄音不再額外削高頻
+    n.lp.frequency.setTargetAtTime(12000, t, k) // 錄音不再額外削高頻、不加低頻共鳴
+    n.body.gain.setTargetAtTime(0, t, k)
   } else {
     n.lp.frequency.setTargetAtTime(700 + load * 3500, t, k)
     n.bp.frequency.setTargetAtTime(900 + rpm * 0.35, t, k)

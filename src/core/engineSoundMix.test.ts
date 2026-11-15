@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mixSamples, validateSamples, synthCycle, SYNTH_BASE_RPM, RATE_MAX, type EngineSample } from './engineSoundMix'
+import { mixSamples, validateSamples, synthCycle, SYNTH_BASE_RPM, RATE_TOP_MAX, type EngineSample } from './engineSoundMix'
 
 const S: EngineSample[] = [
   { rpm: 800, file: 'idle.ogg' }, { rpm: 1500, file: 'a.ogg' }, { rpm: 2500, file: 'b.ogg' }, { rpm: 3500, file: 'c.ogg' },
@@ -18,10 +18,11 @@ describe('mixSamples', () => {
   })
   it('低於最低 / 高於最高：用端點那段變速，並限制在範圍內', () => {
     expect(mixSamples(S, 600)[0]).toMatchObject({ index: 0, gain: 1 })
-    const hi = mixSamples(S, 7000)
+    expect(mixSamples(S, 7000)[0].rate).toBeCloseTo(2)
+    const hi = mixSamples(S, 12000)
     expect(hi).toHaveLength(1)
     expect(hi[0].index).toBe(3)
-    expect(hi[0].rate).toBe(RATE_MAX)
+    expect(hi[0].rate).toBe(RATE_TOP_MAX)
   })
   it('沒有錄音時回傳空陣列', () => { expect(mixSamples([], 1000)).toEqual([]) })
   it('轉速從低掃到高，總功率一直是 1', () => {

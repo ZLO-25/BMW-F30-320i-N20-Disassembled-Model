@@ -203,3 +203,4 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 ## S1 之後（引擎聲，2026-11-15）
 - 引擎聲兩種來源自動選：`public/sounds/engine/manifest.json` 的 `samples` 有東西 → 實車錄音交叉淡化 + 變速；空的 → 合成（每兩圈四次排氣脈衝的波形表）。純邏輯在 `src/core/engineSoundMix.ts`（有測試），播放在 `src/scene/engineSound.ts`（對外介面不變）。
 - **錄音只能是自己錄的或 CC0 / CC-BY**，登記在 `CREDITS.md`。YouTube 影片（例如 BIMMERPOST N20 改裝排氣）不能放。錄法與處理見 `docs/ENGINE_SOUND.md`，切循環用 `scripts/prep_engine_loops.py`（m4a 64 kbps 單聲道，前後留緩衝避開解碼空白）。
+- 目前錄音是 ZL 實車兩段（冷車怠速 1,428、補油 2,802 rpm，轉速由頻譜反推，見 docs/ENGINE_SOUND.md）；最高那段往上最多推 `RATE_TOP_MAX` = 2.6 倍撐到紅線。
