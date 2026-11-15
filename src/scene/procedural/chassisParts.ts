@@ -347,25 +347,31 @@ registerProcedural('trans_crossmember_v1', (d) => grp('',
 ))
 
 // ───────────────────────── 排氣 ─────────────────────────
+// 排氣系統串接（整車座標）：渦輪出口 (1.09, 0.468, 0.27) → 下導管 + 觸媒 → 前法蘭 (0.40, 0.15, 0.20)
+//   → 中段（x 0.40 → −1.36，尾端爬到 y 0.25、z 0.30）→ 消音器進口尖端 (−1.36, 0.25, 0.30)。
+// 下導管原點在 (1.15, 0.17, 0.22)，所以渦輪出口在區域座標 (−0.06, 0.298, 0.05)；改任何一端要一起改。
 registerProcedural('downpipe_v1', (d) => {
   const g = grp()
-  g.add(mesh(cylY(d, 0.07, 0.16), M.steel(), 0, 0.3, 0))                                   // 觸媒
-  g.add(new THREE.Mesh(tube(d, [[0, 0.46, 0], [0, 0.4, 0]], 0.035), M.steel()))
-  g.add(new THREE.Mesh(tube(d, [[0, 0.22, 0], [0, 0.05, 0], [-0.2, -0.02, -0.05], [-0.5, -0.02, -0.08]], 0.03), M.steel()))
-  g.add(mesh(cylY(d, 0.075, 0.012), M.darkSteel(), 0, 0.47, 0))                            // 法蘭
+  g.add(mesh(cylY(d, 0.045, 0.012), M.darkSteel(), -0.06, 0.292, 0.05))                    // 渦輪出口法蘭
+  g.add(new THREE.Mesh(tube(d, [[-0.06, 0.29, 0.05], [-0.06, 0.2, 0.05]], 0.032), M.steel()))
+  g.add(mesh(cylY(d, 0.07, 0.16), M.steel(), -0.06, 0.15, 0.05))                          // 觸媒
+  g.add(new THREE.Mesh(tube(d, [[-0.06, 0.1, 0.05], [-0.06, 0.04, 0.05], [-0.16, -0.01, 0.0], [-0.3, -0.02, -0.02], [-0.75, -0.02, -0.02]], 0.03), M.steel()))
+  g.add(mesh(cylX(d, 0.04, 0.012), M.darkSteel(), -0.745, -0.02, -0.02))                  // 與中段相接的法蘭
   return g
 })
 registerProcedural('exhaust_mid_v1', (d) => {
   const g = grp()
-  g.add(mesh(cylX(d, 0.03, 1.6), M.steel()))
-  g.add(mesh(cylX(d, 0.07, 0.4), M.steel(), 0.3, 0, 0))     // 共鳴箱
-  g.add(mesh(cylX(d, 0.04, 0.05), M.darkSteel(), 0.8, 0, 0), mesh(cylX(d, 0.04, 0.05), M.darkSteel(), -0.8, 0, 0))  // 束環
+  g.add(mesh(cylX(d, 0.03, 1.5), M.steel(), 0.13, 0, 0))                                    // 直管 x 0.88 → −0.62
+  g.add(mesh(cylX(d, 0.07, 0.4), M.steel(), 0.1, 0, 0))                                    // 共鳴箱
+  g.add(new THREE.Mesh(tube(d, [[-0.6, 0, 0], [-0.72, 0.01, 0.02], [-0.82, 0.1, 0.1], [-0.88, 0.1, 0.1]], 0.03), M.steel()))  // 尾端彎到消音器進口
+  g.add(mesh(cylX(d, 0.04, 0.05), M.darkSteel(), 0.875, 0, 0), mesh(cylX(d, 0.04, 0.05), M.darkSteel(), -0.875, 0.1, 0.1))  // 前後束環
+  for (const x of [0.3, -0.45]) g.add(mesh(cylY(d, 0.01, 0.07), M.rubber(), x, 0.065, 0))  // 吊耳
   return g
 })
 registerProcedural('muffler_v1', (d) => {
   const g = grp()
   g.add(mesh(rbox(d, 0.45, 0.2, 0.9, 0.06), M.steel()))
-  g.add(mesh(cylX(d, 0.03, 0.4), M.steel(), 0.4, 0, 0.3))                                 // 進口
+  g.add(mesh(cylX(d, 0.03, 0.4), M.steel(), 0.4, 0, 0.3))  // 進口尖端在 x=+0.6，接中段尾端                                 // 進口
   g.add(mesh(cylX(d, 0.035, 0.18), M.machinedAl(), -0.3, 0, -0.3))  // 單支尾管在左側（-Z，駕駛座側），依 ZL 實車車尾照片
   for (const z of [-0.2, 0.2]) g.add(mesh(cylY(d, 0.004, 0.12), M.rubber(), 0, 0.14, z))  // 吊耳
   return g
