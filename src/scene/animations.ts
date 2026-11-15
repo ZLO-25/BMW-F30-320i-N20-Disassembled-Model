@@ -330,6 +330,23 @@ function resetGearbox(get: AnimCtx['get']) {
   if (gr) { if (gr.userData.x0 !== undefined) gr.position.x = gr.userData.x0; gr.rotation.x = 0 }
   const st = byName(get(MAN + 'shift_lever'), 'stick'); if (st) { st.rotation.x = 0; st.rotation.z = 0 }
   poseClutch(get(MAN + 'pressure_plate'), get(MAN + 'csc'), 0)
+  brakeVis = 0
+  posePedals(get, 0, 0, 0)
+}
+
+/** 三個踏板（離合 / 煞車 / 油門）：0 = 放開，1 = 踩到底。名字見 chassisParts.ts brake_pedal_v1 / accel_pedal_v1、transParts.ts clutch_master_v2 */
+const PEDAL_SWING = 0.18       // 吊掛式踏板（離合、煞車）踩到底的角度（弧度），+θ = 踏板墊往車頭
+const ACCEL_SWING = -0.22      // 地板鉸鏈式油門踩到底的角度
+const PUSHROD_ARM = 0.1        // 推桿掛在踏板臂樞軸下方 0.1 m
+const PEDAL_TILT = -0.15
+let brakeVis = 0               // 煞車踏板的視覺位置（按住時 0.12 秒內踩下）
+function posePedals(get: AnimCtx['get'], clutch: number, brake: number, throttle: number) {
+  const c = byName(get('trans.manual.master_cylinder'), 'pedal'); if (c) c.rotation.z = PEDAL_SWING * clutch
+  const bp = get('brk.pedal')
+  const b = byName(bp, 'pedal'); if (b) b.rotation.z = PEDAL_SWING * brake
+  const pr = byName(bp, 'pushrod')
+  if (pr) { const x0 = -0.11 + Math.sin(PEDAL_TILT) * PUSHROD_ARM; pr.position.x = x0 + PUSHROD_ARM * (Math.sin(PEDAL_TILT + PEDAL_SWING * brake) - Math.sin(PEDAL_TILT)) }
+  const a = byName(get('elec.accel_pedal'), 'pedal'); if (a) a.rotation.z = ACCEL_SWING * throttle
 }
 
 function poseGearbox(get: AnimCtx['get'], b: GearboxState, dt: number) {
@@ -402,13 +419,16 @@ const manualShift: AnimDef = {
     en: 'Press the clutch, pick a gear and add throttle, and watch every part respond, including each gear\'s power path (orange = carrying power, green = locked sleeve): clutch releases → lever pushes the fork → sleeve returns to neutral → the synchro ring drags the input shaft to the new speed (red) → dog teeth engage (green) → clutch released. The gear layout is schematic, not the real GS6-17BG arrangement.',
   },
   parts: [MAN + 'mainshaft', MAN + 'dmf', MAN + 'clutch_disc', MAN + 'pressure_plate', MAN + 'csc', MAN + 'input_shaft', MAN + 'countershaft',   // 第一個 = 鏡頭對準的零件
-    MAN + 'synchro_1_2', MAN + 'synchro_3_4', MAN + 'synchro_5_6', MAN + 'shift_forks', MAN + 'shift_lever', MAN + 'output_flange'],
+    MAN + 'synchro_1_2', MAN + 'synchro_3_4', MAN + 'synchro_5_6', MAN + 'shift_forks', MAN + 'shift_lever', MAN + 'output_flange',
+    MAN + 'master_cylinder', 'brk.pedal', 'elec.accel_pedal'],
   apply: ({ get, t, dt = 1 / 60, clutchHeld = false, brakeHeld = false, autoClutch = true, shiftSlow = false }) => {
     stepGearbox(box, { throttle: t, clutchHeld, brakeHeld, autoClutch, slow: shiftSlow }, dt)
     ang.engine += box.engineRpm * VIS * dt
     ang.input += box.inputRpm * VIS * dt
     ang.out += box.outRpm * VIS * dt
     poseGearbox(get, box, dt)
+    brakeVis = moveTo(brakeVis, brakeHeld ? 1 : 0, dt / 0.12)
+    posePedals(get, ease(box.pedal), brakeVis, t)
   },
 }
 
