@@ -199,3 +199,7 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 - `ShiftPanel.tsx`：125 ms 輪詢讀 `shiftStatus()`，不每格 setState；按住型按鈕用 pointer 事件，鍵盤只掛在面板根元素；面板卸載會放開離合器與煞車並關掉引擎聲。
 - **手排齒比（`MANUAL_RATIOS`）仍是示意值**。官方候選：BMW 新聞稿「BMW 320i, Media Information 1/2012」4.551 / 2.548 / 1.659 / 1.230 / 1.000 / 0.830、R 4.138（尚未核對，實作時 PDF 開不到）。核對後只改 gearbox.ts 那一個常數並登記 sources.json。
 - 倒檔在 H 型圖 1 檔左邊只是介面排版，實車位置與倒檔構造都待確認。
+
+## S1 之後（引擎聲，2026-11-15）
+- 引擎聲兩種來源自動選：`public/sounds/engine/manifest.json` 的 `samples` 有東西 → 實車錄音交叉淡化 + 變速；空的 → 合成（每兩圈四次排氣脈衝的波形表）。純邏輯在 `src/core/engineSoundMix.ts`（有測試），播放在 `src/scene/engineSound.ts`（對外介面不變）。
+- **錄音只能是自己錄的或 CC0 / CC-BY**，登記在 `CREDITS.md`。YouTube 影片（例如 BIMMERPOST N20 改裝排氣）不能放。錄法與處理見 `docs/ENGINE_SOUND.md`，切循環用 `scripts/prep_engine_loops.py`（m4a 64 kbps 單聲道，前後留緩衝避開解碼空白）。

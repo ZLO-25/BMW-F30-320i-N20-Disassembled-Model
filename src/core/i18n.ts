@@ -182,7 +182,7 @@ const UI = {
   shiftCh_reverse: { zh: '停車後打倒檔並倒車', en: 'Stop, then engage reverse and back up' },
   shiftCh_manual_clutch: { zh: '關掉自動離合器，自己踩離合器完成一次換檔', en: 'Auto clutch off: complete a shift with your own clutch' },
   shiftRatioNow: { zh: '齒比 {r} : 1', en: 'Ratio {r} : 1' },
-  engineSoundNote: { zh: '聲音是依轉速即時合成的示意音（點火頻率 = 轉速 ÷ 60 × 2），不是 N20 的錄音。慢動作只影響畫面，聲音照實際轉速。', en: 'The sound is synthesised live from engine speed (firing frequency = rpm ÷ 60 × 2); it is not a recording of an N20. Slow motion only affects the picture; the sound follows the real speed.' },
+  engineSoundNote: { zh: '有實車錄音時，聲音是幾段固定轉速的錄音依轉速交叉淡化；沒有錄音時是即時合成的示意音（每轉兩圈四次排氣脈衝，點火頻率 = 轉速 ÷ 60 × 2）。慢動作只影響畫面，聲音照實際轉速。', en: 'With car recordings present, the sound crossfades between a few fixed-rpm recordings; otherwise it is a live synthesised approximation (four exhaust pulses per two revolutions, firing frequency = rpm ÷ 60 × 2). Slow motion only affects the picture; the sound follows the real speed.' },
   cylinder: { zh: '{n} 缸', en: 'Cyl {n}' },
   strokeIntake: { zh: '進氣', en: 'Intake' },
   strokeCompression: { zh: '壓縮', en: 'Compression' },
