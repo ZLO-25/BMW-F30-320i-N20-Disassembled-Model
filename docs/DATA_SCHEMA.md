@@ -301,3 +301,19 @@ PartRegistry（每個 Canvas 一份：零件 id → Object3D）◄────�
 ```
 
 換成 GLB 時只要節點名稱照這個慣例取，動畫就能直接套用。
+
+### 燃燒特效（F，`src/scene/CombustionFx.tsx`）
+
+「引擎運轉」的火花與火焰**不是零件、也不掛在零件模型底下**（`PartNode.applyVisibility` 會覆寫底下所有 mesh 的透明度），而是場景層級的群組 `combustion_fx`：
+
+```
+core/combustion.ts（純邏輯，示意模型）──► animations.ts 的 fx（每格四缸各算一次，已混合逐次 / 平均）
+                                              │
+                                              ├─► 活塞 piston_<i> 的橘光（跟著壓力）
+                                              ├─► CombustionFx：兩個 InstancedMesh（氣體圓柱、火花方片），每格複製
+                                              │    eng.block.piston_rod_set 的 matrixWorld
+                                              ├─► EngineRunPanel（engineStatus()：提前角、壓力條、⚡）
+                                              └─► engineSound.firePulse()（慢動作每次跳火一聲悶響）
+```
+
+燃燒室幾何常數（缸徑、燃燒室頂、火星塞電極、活塞頂高度）在 `procedural/engineGeom.ts`；換成 GLB 時要讓 `piston_<i>` 與這些常數對得上。

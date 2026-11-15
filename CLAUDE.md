@@ -224,3 +224,13 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 - 踏板動畫在 `animations.ts` 的 `posePedals()`（手排換檔台才會動）：吊掛式 `pedal` group 繞 Z +0.18 rad，油門 −0.22 rad，煞車另有 `pushrod` group 沿 X 平移。自排沒有接動畫。
 - 「F30 油門是地板鉸鏈式」沒查到原廠資料，資料裡寫明示意；電子油門（無拉線）是通則，來源 `hella_accel_pedal`。
 - 模型沒有方向盤（只有轉向柱），尚未做。
+
+## F 之後（四行程燃燒特效，2026-11-15，見 docs/F_REPORT.md）
+- 純邏輯 `src/core/combustion.ts`（有測試）：提前角、Wiebe 燃燒曲線、溫度、相對壓力、逐次 / 平均混合、`sparksBetween`。**所有數字都是教科書示意模型**，常數集中在檔案最上面；找到可登記的 N20 來源前不要改成規格。壓縮比 10 來自 `bmw_st1111_n20`。
+- `animations.ts` 的 `fx` 物件每格算一次四缸燃燒狀態（已混合），活塞橘光、特效、面板、點火聲都讀它；不要在元件裡另外算。
+- 特效 `src/scene/CombustionFx.tsx`（React.lazy，只有 `anim === 'engine_running'` 才掛載）：場景層級群組 `combustion_fx`，兩個 InstancedMesh = +2 draw call、0 燈、0 貼圖。**不要掛到零件模型底下**（applyVisibility 會覆寫透明度）。活塞組或缸頭拆下 / 隱藏時不畫。
+- 畫面上每秒點火 ≤ 2 次 → 逐次（看得到跳火、火球、降溫）；≥ 4 次 → 平均輝光（避開每秒 3 次以上閃光）；暫停 = 逐次；`prefers-reduced-motion` 一律平均。
+- 畫質：`QualityProfile.combustion`（L0 `simple` = 4 步一層雜訊，其餘 `full` = 7 步兩層）。
+- 火星塞 `eng.ignition.spark_plug_set` 的 position.y 是 0.04（F0 從 0.09 降下來），電極在燃燒室頂；燃燒室常數在 `engineGeom.ts`（`ROOF_Y` / `SPARK_Y` / `CROWN_ABOVE_PIN`）。動火星塞、氣門、活塞時一起看。
+- `?stats=1` 另外提供 `window.__n20crank(deg)` 把曲軸擺到指定角度（截圖用）。
+- 點火順序 1-3-4-2 仍待查證（archive.org 的 ST1111 PDF 在雲端連不到）。

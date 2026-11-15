@@ -127,8 +127,24 @@ async function main() {
     const a0 = await frames(); await sleep(2500); const a1 = await frames()
     console.log('animation running, frames in 2.5s:', a1 - a0)
     if (a1 - a0 < 1) fails.push('[E1] animation selected but nothing is rendering')
+    // F3：引擎運轉時場景裡有燃燒特效（combustion_fx，兩個 InstancedMesh），畫面會變；關掉動畫後節點消失
+    const fxInfo = () => page.evaluate(() => {
+      let f = null
+      window.__n20scene.traverse(n => { if (n.name === 'combustion_fx') f = { visible: n.visible, meshes: n.children.filter(c => c.isInstancedMesh).length } })
+      return f
+    })
+    let fx0 = null
+    for (let i = 0; i < 20 && !fx0; i++) { fx0 = await fxInfo(); if (!fx0) await sleep(500) }
+    console.log('combustion fx while engine running:', fx0)
+    if (!fx0) fails.push('[F] engine running but no combustion_fx node in the scene')
+    else if (fx0.meshes !== 2) fails.push(`[F] combustion_fx should have 2 instanced meshes, has ${fx0.meshes}`)
+    else if (!fx0.visible) fails.push('[F] combustion_fx is hidden while the engine is running')
+    const fxShotA = await shot(); await sleep(2500); const fxShotB = await shot()
+    if (fxShotA.equals(fxShotB)) fails.push('[F] engine running: canvas did not change')
     await page.click('.anim-body button.link')
     if (!(await settle())) fails.push('[E1] still rendering after animation stopped')
+    const fx1 = await fxInfo()
+    if (fx1) fails.push('[F] combustion_fx still in the scene after the animation was closed')
     await page.click('.side-tabs button:has-text("零件樹")')
 
     // G4：手排換檔台。切到手排 → 動畫 → 手排換檔台 → 點 1 檔 → 同步器套筒要離開中間 → 關閉動畫要全部回原位

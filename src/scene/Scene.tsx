@@ -18,6 +18,8 @@ import { Governor, profileFor } from '../core/quality'
 
 /** E3：後處理（N8AO、postprocessing 約 100 KB gzip）延遲載入；L0／L1 完全用不到就不下載。分包規則見 vite.config.ts */
 const PostFX = lazy(() => import('./PostFX').then(m => ({ default: m.PostFX })))
+/** F1：缸內燃燒特效，只有開「引擎運轉」動畫才下載與掛載 */
+const CombustionFx = lazy(() => import('./CombustionFx').then(m => ({ default: m.CombustionFx })))
 
 const CAMERA_POS = new THREE.Vector3(2.7, 1.5, 2.3)   // 只用於建立 Canvas 時的初始值；掛載後 CameraReset 立刻換成 defaultView()
 const TARGET = new THREE.Vector3(0.1, 0.55, 0)
@@ -207,6 +209,7 @@ export function Scene({ data }: { data: DataBundle }) {
   const qmode = useAppStore(s => s.qualityMode)
   const mobileDevice = useAppStore(s => s.mobile)
   const setPostfx = useAppStore(s => s.setPostfx)
+  const engineRunning = useAppStore(s => s.anim === 'engine_running')
   const profile = useMemo(() => profileFor(level, mobileDevice, qmode === 'fine'), [level, mobileDevice, qmode])
   const detail = profile.detail
   const ao = profile.ao !== 'off' && !AO_FORCED_OFF
@@ -249,6 +252,7 @@ export function Scene({ data }: { data: DataBundle }) {
       <PartRegistryCtx.Provider value={registry}>
         {data.graph.roots.map(r => <PartNode key={r.id} part={r} graph={data.graph} detail={detail} shadows={shadows} />)}
         <AnimationDriver />
+        {engineRunning && <Suspense fallback={null}><CombustionFx profile={profile} /></Suspense>}
       </PartRegistryCtx.Provider>
       <OrbitControls ref={controls} makeDefault target={TARGET.toArray()} enableDamping dampingFactor={0.1}
         minDistance={0.25} maxDistance={overlayOn ? 40 : 20} maxPolarAngle={Math.PI * 0.78} />

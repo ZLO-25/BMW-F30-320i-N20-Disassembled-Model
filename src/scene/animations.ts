@@ -9,7 +9,8 @@ import type { Bilingual } from '../core/schema'
 import type { Variant } from '../core/partGraph'
 import { CYL_X, CYL_NO, STROKE_R, ROD_L, CRANK_ANGLE } from './procedural/engineGeom'
 import { createGearbox, requestShift, stepGearbox, MANUAL_RATIOS as GB_RATIOS, SYNC_OF, coupling, type Gear, type GearboxInputs, type GearboxState } from '../core/gearbox'
-import { cyclePhase, strokeOf, valveLift, slider, revPerSec, rpmAt, type Stroke } from '../core/engineCycle'
+import { cyclePhase, strokeOf, valveLift, slider, revPerSec, rpmAt, firingHz, fireOffset, SLOW, type Stroke } from '../core/engineCycle'
+import { combustionAt, discreteMix, averagedGlow, sparksBetween, sparkAdvanceDeg } from '../core/combustion'
 
 export interface AnimCtx {
   get: (partId: string) => THREE.Object3D | undefined
@@ -78,6 +79,8 @@ export const GEARS: Record<Variant, string[]> = { manual: ['R', 'N', '1', '2', '
 /** 動畫重置：把所有會被動的東西歸零（換動畫或關掉時呼叫） */
 export function resetAnim(get: AnimCtx['get']) {
   crank = 0
+  sparkHold.fill(0); fx.lastSparkAt.fill(0); fx.lastSparkCyl = 0; fx.mix = 1
+  for (const a of [fx.spark, fx.front, fx.rate, fx.heat, fx.pressure]) a.fill(0)
   resetGearbox(get)
   poseEngine(get, 0, false)
   for (const id of ALL_PARTS) {
@@ -247,9 +250,65 @@ const powerPath: AnimDef = {
 // ───────────────────────── R4：引擎運轉 ─────────────────────────
 /** 曲軸目前角度（弧度）。放模組裡累加，因為轉速會變，不能用 time × 固定轉速 */
 let crank = 0
+/** 曲軸目前角度（弧度，唯讀；燃燒特效算活塞頂高度用） */
+export const engineCrank = () => crank
+/** 自動截圖用（?stats=1 的 window.__n20crank）：把曲軸擺到指定角度（度） */
+export const setEngineCrankDeg = (deg: number) => { crank = (deg * Math.PI) / 180 }
+
+/**
+ * F1 燃燒狀態：每格在 apply 裡算一次（四缸各一次 combustionAt），特效、面板、點火聲都讀這裡。
+ * 陣列索引 = CYL_X 索引（i = 3 是 1 缸），已經依「逐次 / 平均」混合好。
+ *
+ *   mix = 1  慢動作、暫停：看得到每一次跳火、火球長大、降溫
+ *   mix = 0  一般速度：一格就跳過整個燃燒，改畫時間平均的穩定輝光（也避開每秒 3 次以上的閃光）
+ */
+export const fx = {
+  rpm: 700, playing: false, slow: true,
+  mix: 1,
+  advance: 0,
+  spark: new Float32Array(4), front: new Float32Array(4), rate: new Float32Array(4), heat: new Float32Array(4), pressure: new Float32Array(4),
+  /** 每跳火一次 +1（點火聲、特效用來偵測新的一次跳火） */
+  sparkSeq: 0,
+  /** 最近一次跳火的汽缸編號與時間（performance.now()，面板的 ⚡ 用） */
+  lastSparkCyl: 0, lastSparkAt: new Float64Array(5),
+}
+const sparkHold = new Float32Array(4)   // 跳火後至少亮 SPARK_HOLD 秒（真實放電只有 1.5 ms，慢動作也只佔幾格）
+const SPARK_HOLD = 0.15
+const reduceMq = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null
+
+function updateCombustion(deg: number, dt: number) {
+  const target = reduceMq?.matches ? 0 : fx.playing ? discreteMix(firingHz(fx.rpm) / (fx.slow ? SLOW : 1)) : 1
+  fx.mix += (target - fx.mix) * Math.min(1, dt * 5)
+  if (Math.abs(target - fx.mix) < 0.002) fx.mix = target
+  fx.advance = sparkAdvanceDeg(fx.rpm)
+  const m = fx.mix
+  for (let i = 0; i < 4; i++) {
+    const c = combustionAt(cyclePhase(deg, CYL_NO[i]), fx.rpm)
+    const jitter = Math.sin(deg * 0.37 + i * 1.7) * Math.sin(deg * 0.11 + i * 0.6)   // 由曲軸角決定，暫停時固定
+    const avg = averagedGlow(fx.rpm, jitter)
+    if (fx.playing) sparkHold[i] = Math.max(0, sparkHold[i] - dt / SPARK_HOLD)
+    fx.spark[i] = m * Math.max(c.spark, sparkHold[i] * (c.burned > 0 ? 1 : 0))
+    fx.front[i] = m * c.front + (1 - m)
+    fx.rate[i] = m * c.rate + (1 - m) * 0.15 * avg
+    fx.heat[i] = m * c.heat + (1 - m) * avg
+    fx.pressure[i] = m * c.pressure + (1 - m) * 0.6 * avg
+  }
+}
+
 export const engineStatus = () => {
   const deg = ((crank * 180) / Math.PI) % 720
-  return { deg, strokes: [1, 2, 3, 4].map(c => strokeOf(cyclePhase(deg, c))) as Stroke[] }
+  const byCyl = (a: Float32Array) => [1, 2, 3, 4].map(c => a[CYL_NO.indexOf(c)])
+  return {
+    deg,
+    strokes: [1, 2, 3, 4].map(c => strokeOf(cyclePhase(deg, c))) as Stroke[],
+    /** 點火提前角（上死點前幾度，示意） */
+    advance: fx.advance,
+    /** 逐次（1）/ 平均（0） */
+    mix: fx.mix,
+    /** 以下依汽缸編號 1–4 排 */
+    pressure: byCyl(fx.pressure),
+    sparkAgo: [1, 2, 3, 4].map(c => (fx.lastSparkAt[c] ? performance.now() - fx.lastSparkAt[c] : Infinity)),
+  }
 }
 const LIFT = 0.008                      // 氣門開度（視覺值）
 const STROKE_GLOW: Partial<Record<Stroke, THREE.Color>> = { power: new THREE.Color(0xff6a00), intake: new THREE.Color(0x2a7fff) }
@@ -282,9 +341,12 @@ export function poseEngine(get: AnimCtx['get'], a: number, glowOn = true) {
     const vi = byName(valves, `vi_${i}`), ve = byName(valves, `ve_${i}`)
     if (vi) vi.position.y = -LIFT * valveLift(phase, 'intake')
     if (ve) ve.position.y = -LIFT * valveLift(phase, 'exhaust')
-    // 做功：活塞頂發橘光（越剛點火越亮）；進氣：淡藍
-    const c = glowOn ? STROKE_GLOW[st] : undefined
-    glow(piston, c ?? OFF, c ? (st === 'power' ? 1 - (phase / 180) * 0.7 : 0.35) : 0)
+    // F1：活塞頂的橘光跟著缸內壓力（上死點後一點點最亮、之後快速變暗）；進氣：淡藍（只在逐次畫法時）
+    if (!glowOn) { glow(piston, OFF, 0); return }
+    const burning = fx.pressure[i] * Math.min(1, fx.heat[i] * 3 + 0.15)
+    const blue = st === 'intake' ? 0.35 * fx.mix : 0
+    if (blue > burning) glow(piston, STROKE_GLOW.intake!, blue)
+    else glow(piston, burning > 0.01 ? STROKE_GLOW.power! : OFF, burning * 0.5)
   })
 }
 
@@ -292,13 +354,22 @@ const engineRunning: AnimDef = {
   id: 'engine_running', variant: 'both', control: 'rpm',
   title: { zh: '引擎運轉：四行程與轉動件', en: 'Engine running: four strokes and moving parts' },
   desc: {
-    zh: '曲軸轉兩圈，每一缸各完成一次「進氣 → 壓縮 → 做功 → 排氣」。四缸輪流點火，所以任何時候都有一缸在做功。凸輪軸轉速是曲軸的一半，平衡軸是兩倍（反向轉、抵銷四缸引擎的二次振動）。橘光 = 正在做功，藍光 = 正在進氣。點火順序 1-3-4-2 是直列四缸常見的順序（N20 原廠資料待查證）；氣門正時簡化成整個行程開著。',
-    en: 'In two crank turns every cylinder completes intake → compression → power → exhaust once. The four cylinders fire in turn, so one is always on its power stroke. The camshafts turn at half crank speed, the balance shafts at twice (counter-rotating to cancel the four-cylinder second-order shake). Orange = power stroke, blue = intake. The 1-3-4-2 firing order is the usual inline-four order (N20 factory figure unverified); valve timing is simplified to open for the whole stroke.',
+    zh: '曲軸轉兩圈，每一缸各完成一次「進氣 → 壓縮 → 做功 → 排氣」。四缸輪流點火，所以任何時候都有一缸在做功。火星塞在活塞到頂（上死點）之前就跳火，因為火焰燒過去需要時間；轉速越高，點得越早。正常燃燒不是爆炸，而是一顆火球從火星塞往外很快地燒過整個汽缸，壓力在上死點後一點點最高，推著活塞往下。一般速度下每秒點火太多次，畫面上看到的是平均的輝光；開「慢動作」才看得到每一次跳火、火焰長大、氣體降溫。凸輪軸轉速是曲軸的一半，平衡軸是兩倍（反向轉、抵銷四缸引擎的二次振動）。點火時機、燃燒速度與壓力是教科書模型（示意）；點火順序 1-3-4-2 是直列四缸常見的順序（N20 原廠資料待查證）；氣門正時簡化成整個行程開著。',
+    en: 'In two crank turns every cylinder completes intake → compression → power → exhaust once. The four cylinders fire in turn, so one is always on its power stroke. The plug fires before the piston reaches the top (TDC) because the flame needs time to burn across; the higher the rpm, the earlier it fires. Normal combustion is not an explosion: a flame ball spreads quickly out from the plug across the cylinder, and pressure peaks just after TDC, pushing the piston down. At normal speed there are too many firings per second to show, so you see an averaged glow; turn on slow motion to see each spark, the flame growing and the gas cooling. The camshafts turn at half crank speed, the balance shafts at twice (counter-rotating to cancel the four-cylinder second-order shake). Spark timing, burn rate and pressure come from a textbook model (illustrative); the 1-3-4-2 firing order is the usual inline-four order (N20 factory figure unverified); valve timing is simplified to open for the whole stroke.',
   },
   sliderLabels: [{ zh: '低轉速', en: 'Low rpm' }, { zh: '7,000 rpm 紅線', en: '7,000 rpm redline' }],
   parts: ['eng.block.crankshaft', 'eng.block.piston_rod_set', 'eng.head.camshaft_intake', 'eng.head.camshaft_exhaust', 'eng.head.valves', 'eng.block.balance_shafts', 'eng.front.vibration_damper', 'eng.acc.alternator', 'eng.acc.ac_compressor', 'eng.timing.vanos_intake', 'eng.timing.vanos_exhaust', 'trans.manual.dmf', 'trans.auto.flexplate'],
   apply: ({ get, t, dt = 0, playing, slow = true }) => {
-    if (playing) crank += dt * revPerSec(rpmAt(t), slow) * Math.PI * 2
+    fx.rpm = rpmAt(t); fx.playing = !!playing; fx.slow = slow
+    const prev = (crank * 180) / Math.PI
+    if (playing) crank += dt * revPerSec(fx.rpm, slow) * Math.PI * 2
+    const deg = (crank * 180) / Math.PI
+    // 這一格跨過了哪幾缸的跳火點
+    for (const c of sparksBetween(prev, deg, fx.rpm, fireOffset)) {
+      sparkHold[CYL_NO.indexOf(c)] = 1
+      fx.sparkSeq++; fx.lastSparkCyl = c; fx.lastSparkAt[c] = performance.now()
+    }
+    updateCombustion(deg, dt)
     poseEngine(get, crank)
   },
 }
