@@ -289,13 +289,14 @@ data/parts/
 動畫不寫在 JSON，而是用「零件 id + 模型裡的子物件名稱」去找要動的東西：
 
 ```
-AnimDef { id, variant, title, desc, control: 'slider' | 'gear', phases, parts: [零件 id…], apply(ctx) }
+AnimDef { id, variant, title, desc, control: 'slider' | 'gear' | 'rpm' | 'shift', phases, parts: [零件 id…], apply(ctx) }
                                                                         │
 PartRegistry（每個 Canvas 一份：零件 id → Object3D）◄───────────────────┘
         │
         └ 產生器裡的命名慣例：spin（會轉的整包）、fingers / ring / bearing（離合器）、
           sleeve / ring_l / ring_r / gear_l / gear_r（同步器）、gear_<n>（檔位齒輪）、
           pack_<A-E> / piston_<A-E>（離合器包）、set_<1-4> 下的 sun / carrier / ring（行星組）、
+          fork_1_2 / fork_3_4 / fork_5_6（撥叉，G：跟套筒一起沿 X 滑）、stick（排檔桿，繞底座傾斜）、
           pump / turbine / stator / lockup（扭力變換器）；userData.shell = true 的外殼在動畫時自動半透明
 ```
 

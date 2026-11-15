@@ -8,6 +8,7 @@ import * as THREE from 'three'
 import type { Bilingual } from '../core/schema'
 import type { Variant } from '../core/partGraph'
 import { CYL_X, CYL_NO, STROKE_R, ROD_L, CRANK_ANGLE } from './procedural/engineGeom'
+import { createGearbox, requestShift, stepGearbox, MANUAL_RATIOS as GB_RATIOS, SYNC_OF, coupling, type Gear, type GearboxInputs, type GearboxState } from '../core/gearbox'
 import { cyclePhase, strokeOf, valveLift, slider, revPerSec, rpmAt, type Stroke } from '../core/engineCycle'
 
 export interface AnimCtx {
@@ -19,6 +20,10 @@ export interface AnimCtx {
   dt?: number        // 這一格經過的秒數（R4 引擎運轉用）
   playing?: boolean
   slow?: boolean     // 慢動作
+  clutchHeld?: boolean   // G2 手排換檔台
+  brakeHeld?: boolean
+  autoClutch?: boolean
+  shiftSlow?: boolean
 }
 
 export interface AnimPhase { until: number; label: Bilingual }
@@ -28,7 +33,7 @@ export interface AnimDef {
   variant: Variant | 'both'
   title: Bilingual
   desc: Bilingual
-  control: 'slider' | 'gear' | 'rpm'
+  control: 'slider' | 'gear' | 'rpm' | 'shift'
   sliderLabels?: [Bilingual, Bilingual]
   /** 滑桿動畫可以分段說明：t 落在哪一段就顯示那段文字 */
   phases?: AnimPhase[]
@@ -61,7 +66,7 @@ const ease = (t: number) => t * t * (3 - 2 * t)
 const seg = (t: number, a: number, b: number) => Math.min(1, Math.max(0, (t - a) / (b - a)))
 
 /** 手排示意齒比（實際 GS6-17BG 齒比待查證，這些只用來讓齒輪轉速看起來合理） */
-export const MANUAL_RATIOS: Record<string, number> = { R: -3.4, N: 0, 1: 3.7, 2: 2.1, 3: 1.4, 4: 1.0, 5: 0.8, 6: 0.65 }
+export const MANUAL_RATIOS: Record<string, number> = GB_RATIOS   // 數值在 core/gearbox.ts
 export const MANUAL_RATIOS_NOTE: Bilingual = { zh: '示意齒比（GS6-17BG 實際齒比待查證）', en: 'Illustrative ratios (actual GS6-17BG ratios unverified)' }
 /** ZF 8HP45 齒比與各檔接合元件（社群來源：Wikipedia ZF 8HP） */
 export const AUTO_RATIOS: Record<string, number> = { R: -3.295, N: 0, 1: 4.714, 2: 3.143, 3: 2.106, 4: 1.667, 5: 1.285, 6: 1.0, 7: 0.839, 8: 0.667 }
@@ -71,6 +76,7 @@ export const GEARS: Record<Variant, string[]> = { manual: ['R', 'N', '1', '2', '
 /** 動畫重置：把所有會被動的東西歸零（換動畫或關掉時呼叫） */
 export function resetAnim(get: AnimCtx['get']) {
   crank = 0
+  resetGearbox(get)
   poseEngine(get, 0, false)
   for (const id of ALL_PARTS) {
     const o = get(id)
@@ -81,9 +87,18 @@ export function resetAnim(get: AnimCtx['get']) {
     const fingers = byName(o, 'fingers'); if (fingers) fingers.children.forEach(f => { f.rotation.z = 0.25 })
     const bearing = byName(o, 'bearing'); if (bearing) bearing.position.x = 0
     const sleeve = byName(o, 'sleeve'); if (sleeve) sleeve.position.x = 0
+    for (let i = 1; i <= 6; i++) { const g = byName(o, `gear_${i}`); if (g) g.rotation.x = 0 }
     const lock = byName(o, 'lockup'); if (lock) lock.position.x = 0.02
     for (const n of ['gear_l', 'gear_r', 'pump', 'turbine', 'stator', 'carrier', 'sun', 'ring']) { const x = byName(o, n); if (x && n !== 'ring') x.rotation.x = 0 }
   }
+}
+
+/** 壓板膜片彈簧指、壓環、分離軸承依踏板量 k（0 放開 – 1 踩到底）擺姿勢；回傳軸承（上色用） */
+function poseClutch(pp: THREE.Object3D | undefined, csc: THREE.Object3D | undefined, k: number) {
+  const fingers = byName(pp, 'fingers'); if (fingers) fingers.children.forEach(f => { f.rotation.z = 0.25 - 0.5 * k })
+  const ring = byName(pp, 'ring'); if (ring) ring.position.x = 0.006 - 0.008 * k
+  const bearing = byName(csc, 'bearing'); if (bearing) bearing.position.x = 0.012 * k
+  return bearing
 }
 
 const clutchDisengage: AnimDef = {
@@ -100,9 +115,7 @@ const clutchDisengage: AnimDef = {
   apply: ({ get, t, time }) => {
     const k = ease(t)
     const pp = get('trans.manual.pressure_plate'), disc = get('trans.manual.clutch_disc'), dmf = get('trans.manual.dmf'), csc = get('trans.manual.csc'), inp = get('trans.manual.input_shaft')
-    const fingers = byName(pp, 'fingers'); if (fingers) fingers.children.forEach(f => { f.rotation.z = 0.25 - 0.5 * k })
-    const ring = byName(pp, 'ring'); if (ring) ring.position.x = 0.006 - 0.008 * k
-    const bearing = byName(csc, 'bearing'); if (bearing) bearing.position.x = 0.012 * k
+    const bearing = poseClutch(pp, csc, k)
     // 轉速：飛輪、壓板永遠跟引擎；離合器片與輸入軸在 t>0.5 後減速到停
     const discRate = RPM * (1 - seg(t, 0.4, 0.95))
     spin(dmf, 'spin', time * RPM); spin(pp, 'spin', time * RPM)
@@ -287,7 +300,116 @@ const engineRunning: AnimDef = {
   },
 }
 
-export const ANIMATIONS: AnimDef[] = [engineRunning, clutchDisengage, synchroShift, tcLockup, powerPath]
+
+// ───────────────────────── G2：手排換檔台 ─────────────────────────
+let box: GearboxState = createGearbox()
+const ang = { engine: 0, input: 0, out: 0 }       // 累加轉角（弧度）：轉速會變，不能用 time × 固定值
+let stickRow = 0, stickTilt = 0                   // 排檔桿目前的左右 / 前後角度
+const VIS = 2.2 / 2000                            // 視覺轉速：2,000 rpm 畫成 2.2 rad/s（和 RPM 常數同級）
+const SLEEVE_TRAVEL = 0.03                        // 套筒全行程（公尺），和 powerPath 一樣
+const SYNC_IDS = ['1_2', '3_4', '5_6'] as const
+const MAN = 'trans.manual.'
+/** 介面每 125 ms 讀一次（唯讀）；請求換檔走 shiftRequest，判斷全在 core/gearbox.ts */
+export const shiftStatus = (): Readonly<GearboxState> => box
+export const shiftRequest = (to: Gear, inp: GearboxInputs) => requestShift(box, to, inp)
+
+/** 排檔桿的 H 型位置：R | 1-2 | 3-4 | 5-6 */
+const ROW_OF: Record<string, number> = { R: 0, 1: 1, 2: 1, 3: 2, 4: 2, 5: 3, 6: 3 }
+const moveTo = (v: number, target: number, d: number) => (v < target ? Math.min(target, v + d) : Math.max(target, v - d))
+
+function resetGearbox(get: AnimCtx['get']) {
+  box = createGearbox(); ang.engine = ang.input = ang.out = 0; stickRow = 0; stickTilt = 0
+  for (const id of SYNC_IDS) {
+    const f = byName(get(MAN + 'shift_forks'), `fork_${id}`)
+    if (f && f.userData.x0 !== undefined) f.position.x = f.userData.x0
+  }
+  const gr = byName(get(MAN + 'mainshaft'), 'gear_R')
+  if (gr) { if (gr.userData.x0 !== undefined) gr.position.x = gr.userData.x0; gr.rotation.x = 0 }
+  const st = byName(get(MAN + 'shift_lever'), 'stick'); if (st) { st.rotation.x = 0; st.rotation.z = 0 }
+  poseClutch(get(MAN + 'pressure_plate'), get(MAN + 'csc'), 0)
+}
+
+function poseGearbox(get: AnimCtx['get'], b: GearboxState, dt: number) {
+  const sp = (id: string) => get(MAN + id)
+  const dmf = sp('dmf'), disc = sp('clutch_disc'), pp = sp('pressure_plate'), csc = sp('csc'), inp = sp('input_shaft')
+  const cs = sp('countershaft'), ms = sp('mainshaft'), flange = sp('output_flange'), forks = sp('shift_forks'), lever = sp('shift_lever')
+  const k = ease(b.pedal)
+  const bearing = poseClutch(pp, csc, k)
+  const driving = b.locked && coupling(b.pedal) > 0.5
+  // 轉動（轉角累加）
+  spin(dmf, 'spin', ang.engine); spin(pp, 'spin', ang.engine)
+  spin(disc, 'spin', ang.input); spin(inp, 'spin', ang.input)
+  spin(cs, 'spin', -ang.input * 0.8)
+  spin(ms, 'spin', ang.out); spin(flange, 'spin', ang.out)
+  // 套筒、撥叉、同步器
+  const lockedSync = b.locked && SYNC_OF[b.gear] ? SYNC_OF[b.gear][0] : null
+  const target = b.shift && b.shift.to !== 'N' ? b.shift.to : null
+  const tSync = target && SYNC_OF[target] ? SYNC_OF[target] : null
+  const grindSync = b.grind > 0 && b.grindAt && SYNC_OF[b.grindAt] ? SYNC_OF[b.grindAt] : null
+  for (const id of SYNC_IDS) {
+    const sy = sp(`synchro_${id}`)
+    const sleeve = byName(sy, 'sleeve')
+    if (sleeve) sleeve.position.x = b.sleeve[id] * SLEEVE_TRAVEL
+    const fork = byName(forks, `fork_${id}`)
+    if (fork) fork.position.x = ((fork.userData.x0 ??= fork.position.x) as number) + b.sleeve[id] * SLEEVE_TRAVEL
+    spin(sy, 'spin', ang.out)
+    // 兩側齒輪：奇數檔在 +X 側（gear_l），偶數檔在 −X 側（gear_r）；和輸出軸上的同號齒輪用同一個轉角
+    const n = SYNC_IDS.indexOf(id) * 2 + 1
+    const gl = byName(sy, 'gear_l'), gr = byName(sy, 'gear_r')
+    if (gl) gl.rotation.x = ang.input / MANUAL_RATIOS[n]
+    if (gr) gr.rotation.x = ang.input / MANUAL_RATIOS[n + 1]
+    // 發光：同步中的環紅；打齒時紅；鎖上的套筒綠
+    const syncing = b.shift?.phase === 'sync' && tSync && tSync[0] === id
+    const grinding = grindSync && grindSync[0] === id
+    const side = syncing ? tSync![1] : grinding ? grindSync![1] : 0
+    glow(byName(sy, 'ring_l'), side === 1 ? CONTACT : OFF, 0.9)
+    glow(byName(sy, 'ring_r'), side === -1 ? CONTACT : OFF, 0.9)
+    glow(sleeve, lockedSync === id ? ACTIVE : OFF, 0.6)
+  }
+  // 輸出軸上的六個齒輪（空套，轉速 = 輸入軸 ÷ 該檔齒比）；副軸上的對應齒輪只亮、不另外轉
+  const gnum = b.locked ? Number(b.gear) : 0
+  for (let i = 1; i <= 6; i++) {
+    const g = byName(ms, `gear_${i}`)
+    if (g) g.rotation.x = ang.input / MANUAL_RATIOS[i]
+    glow(g, driving && i === gnum ? POWER : OFF, 0.7)
+    glow(byName(cs, `gear_${i}`), driving && i === gnum ? POWER : OFF, 0.7)
+  }
+  // 倒檔惰輪：滑入 2 cm
+  const gR = byName(ms, 'gear_R')
+  if (gR) { gR.position.x = ((gR.userData.x0 ??= gR.position.x) as number) + b.rev * 0.02; gR.rotation.x = -ang.input * 0.5; glow(gR, driving && b.gear === 'R' ? POWER : OFF, 0.7) }
+  // 其他零件上色
+  glow(dmf, POWER, 0.45); glow(pp, POWER, 0.4)
+  glow(disc, driving ? POWER : OFF, 0.45); glow(inp, driving ? POWER : OFF, 0.45); glow(cs, driving ? POWER : OFF, 0.35)
+  glow(ms, driving ? POWER : OFF, 0.4); glow(flange, driving ? POWER : OFF, 0.45)
+  glow(bearing, b.pedal > 0.1 ? CONTACT : OFF, 0.6)
+  // 排檔桿：先在「排」之間橫移（只在空檔時），再依套筒位置前後推
+  const act: Gear = b.shift ? (b.shift.phase === 'sync' || b.shift.phase === 'engage' ? b.shift.to : b.shift.from) : b.gear
+  const wantRow = ROW_OF[act] !== undefined ? (ROW_OF[act] - 1.5) * 0.12 : stickRow
+  stickRow = moveTo(stickRow, wantRow, dt * 1)
+  const wantTilt = act === 'R' ? b.rev * 0.2 : SYNC_OF[act] ? b.sleeve[SYNC_OF[act][0]] * 0.2 : 0
+  stickTilt = moveTo(stickTilt, wantTilt, dt * 1)
+  const stick = byName(lever, 'stick'); if (stick) { stick.rotation.x = stickRow; stick.rotation.z = -stickTilt }
+}
+
+const manualShift: AnimDef = {
+  id: 'manual_shift', variant: 'manual', control: 'shift',
+  title: { zh: '🕹 手排換檔台：自己換檔', en: '🕹 Manual shift bench: change gears yourself' },
+  desc: {
+    zh: '自己踩離合器、打檔、給油，看變速箱裡每個零件怎麼跟著動：離合器分離 → 排檔桿推撥叉 → 套筒退回空檔 → 同步環用摩擦把輸入軸拖到新轉速（紅）→ 犬齒咬合（綠）→ 放離合器。齒輪排列為示意，不是 GS6-17BG 的實際配置。',
+    en: 'Press the clutch, pick a gear and add throttle, and watch every part respond: clutch releases → lever pushes the fork → sleeve returns to neutral → the synchro ring drags the input shaft to the new speed (red) → dog teeth engage (green) → clutch released. The gear layout is schematic, not the real GS6-17BG arrangement.',
+  },
+  parts: [MAN + 'mainshaft', MAN + 'dmf', MAN + 'clutch_disc', MAN + 'pressure_plate', MAN + 'csc', MAN + 'input_shaft', MAN + 'countershaft',   // 第一個 = 鏡頭對準的零件
+    MAN + 'synchro_1_2', MAN + 'synchro_3_4', MAN + 'synchro_5_6', MAN + 'shift_forks', MAN + 'shift_lever', MAN + 'output_flange'],
+  apply: ({ get, t, dt = 1 / 60, clutchHeld = false, brakeHeld = false, autoClutch = true, shiftSlow = false }) => {
+    stepGearbox(box, { throttle: t, clutchHeld, brakeHeld, autoClutch, slow: shiftSlow }, dt)
+    ang.engine += box.engineRpm * VIS * dt
+    ang.input += box.inputRpm * VIS * dt
+    ang.out += box.outRpm * VIS * dt
+    poseGearbox(get, box, dt)
+  },
+}
+
+export const ANIMATIONS: AnimDef[] = [engineRunning, manualShift, clutchDisengage, synchroShift, tcLockup, powerPath]
 export const ANIM_BY_ID = new Map(ANIMATIONS.map(a => [a.id, a]))
 const ALL_PARTS = [...new Set(ANIMATIONS.flatMap(a => a.parts))]
 export const animationsFor = (variant: Variant) => ANIMATIONS.filter(a => a.variant === 'both' || a.variant === variant)

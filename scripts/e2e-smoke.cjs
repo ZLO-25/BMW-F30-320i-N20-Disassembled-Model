@@ -131,6 +131,25 @@ async function main() {
     if (!(await settle())) fails.push('[E1] still rendering after animation stopped')
     await page.click('.side-tabs button:has-text("零件樹")')
 
+    // G4：手排換檔台。切到手排 → 動畫 → 手排換檔台 → 點 1 檔 → 同步器套筒要離開中間 → 關閉動畫要全部回原位
+    await page.click('.topbar button:has-text("手排")')
+    await sleep(1500)
+    await page.click('.side-tabs button:has-text("動畫")')
+    await page.click('.anim-list .anim-item:has-text("手排換檔台")')
+    await sleep(1500)
+    const sleeves = () => page.evaluate(() => { const o = []; window.__n20scene.traverse(n => { if (n.name === 'sleeve') o.push(n.position.x) }); return o })
+    await page.click('.shift-panel .gate-btn:text-is("1")')
+    let moved = false
+    for (let i = 0; i < 90 && !moved; i++) { await sleep(1000); moved = (await sleeves()).some(x => Math.abs(x) > 0.005) }
+    console.log('shift bench: sleeve moved after selecting 1st:', moved)
+    if (!moved) fails.push('[G] manual shift bench: no sleeve moved after selecting 1st gear')
+    await page.click('.anim-body button.link')
+    await sleep(1500)
+    const back = await sleeves()
+    if (back.length === 0 || back.some(x => x !== 0)) fails.push(`[G] sleeves not back at 0 after closing the animation: ${back}`)
+    if (!(await settle())) fails.push('[G] still rendering after closing the shift bench')
+    await page.click('.side-tabs button:has-text("零件樹")')
+
     // 切換變體 4 次：geometry 數量不該一直漲（允許少量快取差異）
     for (let i = 0; i < 4; i++) {
       await page.click(`.seg button:has-text("${i % 2 === 0 ? '手排' : '自排'}")`)

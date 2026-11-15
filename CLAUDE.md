@@ -190,3 +190,12 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 - 白漆是素色漆：`PAINTS.zl_white` 金屬度 0（有金屬度會把暖色燈染成粉橘）。
 - 車頭 / 車尾斜面用 `rakeX(x, y)`（`bodyShell.ts`）：車皮頂點、燈具、水箱罩、下擾流都要經過它。新增貼在車頭車尾的東西時位置寫 `rakeX(endX(...) 或 surfX(...), y)`。
 - 頭燈尾燈用 `lampSkin()` 貼著車皮做（`surfX` 二分搜尋截面邊界）；外形常數 `HEAD` / `TAILL`。
+
+
+## G 之後（手排換檔台，2026-11-14，見 docs/G_REPORT.md）
+- 純邏輯在 `src/core/gearbox.ts`（狀態機、轉速模型、拒絕規則；有測試）。**「能不能換檔」的判斷只能寫在這裡**，元件與動畫只呼叫 `requestShift` / `stepGearbox`。換檔挑戰判定在 `src/core/shiftChallenges.ts`（純函式，完成紀錄存 localStorage `n20.shiftChallenges.v1`）。
+- 動畫 `manual_shift`（control `'shift'`）在 `animations.ts`：模組裡一個 `box`（GearboxState）與累加轉角 `ang`，`resetAnim` 會重設；介面用 `shiftStatus()`（唯讀）和 `shiftRequest()`。控制值在 store：`clutchHeld / brakeHeld / autoClutch / shiftSlow`，油門用 `animT`。
+- 會動的新節點都有名字：`fork_1_2 / fork_3_4 / fork_5_6`（shift_forks_v1）、`stick`（shift_lever_v1）。撥叉的區域 X = 同步器 X + 0.30（零件 position.x = −0.30）。
+- `ShiftPanel.tsx`：125 ms 輪詢讀 `shiftStatus()`，不每格 setState；按住型按鈕用 pointer 事件，鍵盤只掛在面板根元素；面板卸載會放開離合器與煞車並關掉引擎聲。
+- **手排齒比（`MANUAL_RATIOS`）仍是示意值**。官方候選：BMW 新聞稿「BMW 320i, Media Information 1/2012」4.551 / 2.548 / 1.659 / 1.230 / 1.000 / 0.830、R 4.138（尚未核對，實作時 PDF 開不到）。核對後只改 gearbox.ts 那一個常數並登記 sources.json。
+- 倒檔在 H 型圖 1 檔左邊只是介面排版，實車位置與倒檔構造都待確認。
