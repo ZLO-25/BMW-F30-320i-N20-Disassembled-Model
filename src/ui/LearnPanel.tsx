@@ -4,6 +4,7 @@ import { useFullData } from './useFullData'
 import { t, ui, fmt } from '../core/i18n'
 import { triggerText } from './learnHelpers'
 import { useAppStore } from '../store/useAppStore'
+import { resolveAnim } from '../scene/animations'
 import { isLevelUnlocked, emptyProgress } from '../core/progress'
 import { worldPosition } from '../core/partGraph'
 import { SUBSYSTEM_NAMES } from '../core/i18n'
@@ -157,7 +158,7 @@ function GoalButton({ data, goal }: { data: DataBundle; goal: Level['goals'][num
     } else if (goal.kind === 'isolate' && goal.ref) {
       st.isolate(goal.ref, subs); st.setToolsOpen(true); st.setBodyMode('hidden')
     } else if (goal.kind === 'animation' && goal.ref) {
-      st.setAnim(goal.ref); st.setDrawer(true, 'anim')
+      st.setAnim(resolveAnim(goal.ref, st.variant)); st.setDrawer(true, 'anim')
     } else if (goal.kind === 'procedure' && goal.ref) {
       st.startGuide(goal.ref)
     } else if (goal.kind === 'scenario' && goal.ref) {
