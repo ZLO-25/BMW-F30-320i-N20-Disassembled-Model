@@ -285,6 +285,91 @@ registerProcedural('master_cylinder_v1', (d) => grp('',
   mesh(cylX(d, 0.016, 0.1), M.machinedAl(), 0.04, 0, 0),         // 總泵
   mesh(rbox(d, 0.07, 0.07, 0.05, 0.01), mat(0xf4f1e8, { roughness: 0.7, metalness: 0 }), 0.05, 0.06, 0),  // 油壺
 ))
+/**
+ * 煞車倍力器 v2：和 v1 一樣的主體，但後面加安裝法蘭 + 四根雙頭螺栓，原點仍在倍力器中心偏前。
+ * 零件 position = (0.695, 0.8, −0.38)：倍力器後面（x −0.085）貼在防火牆車頭側（防火牆板 x 0.59–0.61）。
+ * 推桿從座艙側的煞車踏板（brk.pedal）穿過防火牆插進倍力器後面。
+ * 離合器供油管終點用到油壺頂（transParts.ts 的 clutch_master_v2），這個零件移動時兩邊一起改。
+ */
+registerProcedural('master_cylinder_v2', (d) => {
+  const g = grp('',
+    mesh(cylX(d, 0.11, 0.07), M.dark(), -0.05, 0, 0),              // 真空倍力器
+    mesh(cylX(d, 0.016, 0.1), M.machinedAl(), 0.04, 0, 0),         // 總泵
+    mesh(rbox(d, 0.07, 0.07, 0.05, 0.01), mat(0xf4f1e8, { roughness: 0.7, metalness: 0 }), 0.05, 0.06, 0),  // 油壺
+    mesh(rbox(d, 0.01, 0.2, 0.2, 0.004), M.steel(), -0.09, 0, 0),    // 安裝法蘭（貼防火牆）
+  )
+  for (const [y, z] of [[0.08, 0.08], [0.08, -0.08], [-0.08, 0.08], [-0.08, -0.08]]) g.add(mesh(cylX(d, 0.005, 0.03), M.darkSteel(), -0.1, y, z))
+  g.add(mesh(cylX(d, 0.012, 0.03), M.rubber(), -0.1, 0, 0))     // 推桿防塵套（穿過防火牆）
+  return g
+})
+
+/**
+ * 煞車踏板 v1（示意）：吊掛式踏板（樞軸在上方）、推桿穿過防火牆插進倍力器。
+ * 原點 = 防火牆座艙側表面（同 clutch_master_v2）；零件 position = (0.6, 0.8, −0.38)，和倍力器同軸線。
+ *
+ *   側視（車頭在右）：
+ *            支架 ╔●pivot╗▓防火牆▓
+ *                 ║ │   ║══ 推桿 ══▶[倍力器]
+ *                 ║ │臂 ║
+ *                 ╚═│═══╝
+ *                 ▄▄┘ 踏板墊
+ *
+ * 動畫：`pedal` group（原點在樞軸，繞 Z 轉，+θ = 踏板墊往車頭踩）、`pushrod` group（沿 X 平移）。
+ */
+registerProcedural('brake_pedal_v1', (d) => {
+  const g = grp('')
+  g.add(mesh(rbox(d, 0.012, 0.17, 0.08, 0.004), M.steel(), -0.006, 0.04, 0))        // 貼防火牆的底板
+  for (const z of [-0.03, 0.03]) g.add(mesh(rbox(d, 0.13, 0.15, 0.006, 0.002), M.steel(), -0.075, 0.045, z))
+  g.add(mesh(cylZ(d, 0.007, 0.08), M.darkSteel(), -0.11, 0.1, 0))                    // 樞軸銷
+  g.add(mesh(rbox(d, 0.025, 0.03, 0.03, 0.004), M.blackPlastic(), -0.05, 0.12, 0.04)) // 煞車燈開關（示意）
+  const pedal = grp('pedal'); pedal.position.set(-0.11, 0.1, 0)
+  const tilt = -0.15, L = 0.5
+  pedal.add(mesh(rbox(d, 0.016, L, 0.022, 0.004), M.darkSteel(), Math.sin(tilt) * L / 2, -Math.cos(tilt) * L / 2, 0, 0, 0, tilt))
+  pedal.add(mesh(rbox(d, 0.014, 0.045, 0.1, 0.005), M.rubber(), Math.sin(tilt) * L - 0.002, -Math.cos(tilt) * L + 0.004, 0, 0, 0, tilt))
+  g.add(pedal)
+  // 推桿：叉頭掛在踏板臂（樞軸下方 0.1），直線穿過防火牆到倍力器後面（+0.03 = 插進倍力器）
+  const x0 = -0.11 + Math.sin(tilt) * 0.1
+  const pr = grp('pushrod'); pr.position.set(x0, 0, 0)
+  pr.add(mesh(cylX(d, 0.004, 0.03 - x0 + 0.0), M.steel(), (0.03 - x0) / 2, 0, 0))
+  pr.add(mesh(rbox(d, 0.02, 0.016, 0.03, 0.003), M.steel(), 0, 0, 0))               // 叉頭
+  g.add(pr)
+  return g
+})
+
+/**
+ * 油門踏板 v1（示意）：地板鉸鏈式電子油門踏板模組。踏板只是個位置感知器，沒有拉線；
+ * 感知器的電線經防火牆接到 DME（elec.dme，(0.72, 0.92, 0.55)），DME 再控制電子節氣門馬達。
+ * 原點 = 踏板鉸鏈在地板上的那一點；零件 position = (0.30, 0.27, −0.27)。
+ *
+ *   側視：       ╲ 踏板墊（約 x 0.41, y 0.46）
+ *                 ╲
+ *     [感知器]═●鉸鏈      ← 電線 ──▶ 防火牆 ──▶ DME
+ *     ▀▀▀▀▀▀▀▀▀▀▀▀▀ 地板
+ *
+ * 動畫：`pedal` group（原點在鉸鏈，繞 Z 轉，負角度 = 往下踩）。
+ * 電線終點用整車座標寫（W2A 換成區域座標）；DME 移動時要一起改。
+ */
+const ACC_ORIGIN = [0.30, 0.27, -0.27] as const
+const W2A = (x: number, y: number, z: number): [number, number, number] => [x - ACC_ORIGIN[0], y - ACC_ORIGIN[1], z - ACC_ORIGIN[2]]
+registerProcedural('accel_pedal_v1', (d) => {
+  const g = grp('')
+  g.add(mesh(rbox(d, 0.16, 0.008, 0.1, 0.003), M.darkSteel(), -0.02, 0.004, 0))     // 地板底座
+  g.add(mesh(rbox(d, 0.05, 0.035, 0.07, 0.006), M.blackPlastic(), -0.07, 0.025, 0)) // 踏板位置感知器（霍爾 / 非接觸式，示意）
+  g.add(mesh(rbox(d, 0.02, 0.02, 0.025, 0.004), M.blackPlastic(), -0.07, 0.05, 0.03)) // 插頭
+  g.add(mesh(cylZ(d, 0.008, 0.08), M.darkSteel(), 0, 0.025, 0))                      // 鉸鏈銷
+  const pedal = grp('pedal'); pedal.position.set(0, 0.025, 0)
+  const a = 0.6, L = 0.2
+  const lean = -a   // 往車頭（+X）傾
+  pedal.add(mesh(rbox(d, 0.014, L, 0.05, 0.004), M.darkSteel(), -Math.sin(lean) * L / 2, Math.cos(lean) * L / 2, 0, 0, 0, lean))
+  pedal.add(mesh(rbox(d, 0.012, 0.15, 0.055, 0.005), M.rubber(), -Math.sin(lean) * L, Math.cos(lean) * L, 0, 0, 0, lean))
+  g.add(pedal)
+  // 電線：感知器插頭 → 沿座艙往防火牆 → 穿過防火牆 → 引擎室裡斜向右到 DME
+  g.add(mesh(tube(d, [
+    W2A(0.23, 0.32, -0.24), W2A(0.35, 0.45, -0.22), W2A(0.5, 0.62, -0.2), W2A(0.6, 0.72, -0.19),
+    W2A(0.64, 0.76, -0.15), W2A(0.66, 0.85, 0.2), W2A(0.7, 0.9, 0.48), W2A(0.72, 0.9, 0.52),
+  ], 0.004), M.blackPlastic()))
+  return g
+})
 registerProcedural('abs_module_v1', (d) => grp('',
   mesh(rbox(d, 0.09, 0.07, 0.09, 0.01), M.machinedAl()),
   mesh(cylX(d, 0.035, 0.06), M.dark(), -0.07, 0, 0),             // 泵馬達

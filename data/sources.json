@@ -283,5 +283,21 @@
   "type": "manufacturer",
   "accessed": "2026-11-12",
   "note": "列出 205/60 R16、225/55 R16、225/50 R17、225/45 R18，以及成對的 225/45 R18 − 255/40 R18 等（頁面沒寫是否前後不同寬）。輪圈寬度與 ET 沒有列。3D 輪胎用 225/45 R18（ZL 實車是 18 吋）。"
+ },
+ {
+  "id": "hella_accel_pedal",
+  "title": "HELLA Tech World: Accelerator pedal sensor",
+  "url": "https://www.hella.com/techworld/en/car-parts/auto-electronics/accelerator-pedal-sensor/",
+  "type": "manufacturer",
+  "accessed": "2026-11-15",
+  "note": "通則：現代車油門不用拉線，感知器量踏板位置並把資料送給控制單元；模組有吊掛式與地板式。頁面沒寫 BMW F30 用哪一種。"
+ },
+ {
+  "id": "globalparts_f30_pedal_assy",
+  "title": "GlobalParts: BMW F20/F21/F22/F30/F31/F32 complete pedal assembly clutch brake (OEM 6860644)",
+  "url": "https://globalparts.co.uk/pedal-assemblies-pads-parts/rhd-6860644/bmw-1-2-3-4-series-f20-f21-f22-f30-f31-f32-complete-pedal-assembly-clutch-brake",
+  "type": "parts_catalog",
+  "accessed": "2026-11-15",
+  "note": "手排車的離合器與煞車踏板總成（同一支撐梁，附煞車／離合器開關位置）；沒寫鉸鏈形式與尺寸。"
  }
 ]

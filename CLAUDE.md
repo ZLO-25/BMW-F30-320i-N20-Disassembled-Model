@@ -217,3 +217,10 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 - 排氣三件（`downpipe_v1` / `exhaust_mid_v1` / `muffler_v1`）的零件原點、接點 J0–J2、各段中心線都在 `src/scene/procedural/exhaustGeom.ts`；產生器用「世界座標 − 原點」算區域座標。**改原點時 `exhaustGeom.ts` 與 `data/parts/exhaust.json` 要一起改**。
 - 車底段走 **y 0.15 / z 0.20**，從副車架與後軸（底面 y ≥ 0.215）下方穿過，到 x −1.67 才爬升進消音器箱體；不要再把進口抬到 y 0.25（會穿過差速器法蘭、傳動軸防塵套、後下臂、後束桿與副車架橫樑）。
 - `src/scene/procedural/exhaust.test.ts` 守住三件事：資料座標 = 原點常數、兩個零件的開口在接點上且全程連續、車底段不穿過 `drv.*` / `chs.rear_*` / `chs.trans_crossmember` 的任何 mesh（逐 mesh AABB）。動後軸或排氣之後一定要跑。
+
+## 三踏板之後（2026-11-15）
+- 離合 / 煞車 / 油門都在防火牆～地板的座艙側，z 由左到右 −0.50 / −0.38 / −0.27（間距約 11 cm）。離合 `trans.manual.master_cylinder`、煞車 `brk.pedal`（`brake_pedal_v1`，推桿穿防火牆插進倍力器）、油門 `elec.accel_pedal`（`accel_pedal_v1`，地板鉸鏈式電子油門，電線接 DME）。
+- 倍力器改 `master_cylinder_v2`，position.x 0.695（後面貼防火牆車頭側）；離合器供油管終點用到它的油壺頂，**移動倍力器時 `clutch_master_v2` 的供油管終點要一起改**。油門電線終點用 DME 座標（`accel_pedal_v1` 的 `W2A`），DME 移動時也要改。
+- 踏板動畫在 `animations.ts` 的 `posePedals()`（手排換檔台才會動）：吊掛式 `pedal` group 繞 Z +0.18 rad，油門 −0.22 rad，煞車另有 `pushrod` group 沿 X 平移。自排沒有接動畫。
+- 「F30 油門是地板鉸鏈式」沒查到原廠資料，資料裡寫明示意；電子油門（無拉線）是通則，來源 `hella_accel_pedal`。
+- 模型沒有方向盤（只有轉向柱），尚未做。
