@@ -21,6 +21,7 @@ type Nodes = {
   noiseGain: GainNode; bp: BiquadFilterNode
   samples: { list: EngineSample[]; voices: Voice[]; level: GainNode } | null
   rpm: number
+  noise: AudioBuffer
 }
 let n: Nodes | null = null
 
@@ -94,7 +95,7 @@ export function startEngineSound(rpm: number) {
   noise.connect(bp).connect(noiseGain).connect(master)
   noise.start()
 
-  const me: Nodes = { ctx, master, lp, body, synth, synthLevel, noiseGain, bp, samples: null, rpm }
+  const me: Nodes = { ctx, master, lp, body, synth, synthLevel, noiseGain, bp, samples: null, rpm, noise: nb }
   n = me
   setEngineRpm(rpm)
   master.gain.setTargetAtTime(0.55, ctx.currentTime, 0.15)
@@ -137,6 +138,25 @@ export function setEngineRpm(rpm: number) {
     n.bp.frequency.setTargetAtTime(900 + rpm * 0.35, t, k)
     n.noiseGain.gain.setTargetAtTime(0.015 + load * 0.05, t, k)
   }
+}
+
+/**
+ * F1 點火悶響：慢動作逐次畫面時，每跳火一次呼叫一次（CombustionFx）。短促的低頻噪音（約 0.15 秒），
+ * 直接接到總音量，所以跟著「引擎聲」勾選框：聲音沒在響（n = null）就什麼都不做。這是示意的教學音效，不是錄音。
+ */
+export function firePulse() {
+  if (!n) return
+  const { ctx, master, noise } = n
+  const t = ctx.currentTime
+  const src = ctx.createBufferSource(); src.buffer = noise
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 220; lp.Q.value = 1.4
+  const g = ctx.createGain()
+  g.gain.setValueAtTime(0.0001, t)
+  g.gain.exponentialRampToValueAtTime(1.6, t + 0.004)
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16)
+  src.connect(lp).connect(g).connect(master)
+  src.start(t, Math.random() * 0.5, 0.2)
+  src.onended = () => { src.disconnect(); lp.disconnect(); g.disconnect() }
 }
 
 export function stopEngineSound() {

@@ -10,10 +10,9 @@ import {
   hexHead, hoseClamp, type Detail,
 } from './registry'
 
-import { CYL_X, CRANK_Y, STROKE_R, ROD_L, CRANK_ANGLE } from './engineGeom'
+import { CYL_X, CRANK_Y, STROKE_R, ROD_L, CRANK_ANGLE, BORE_R } from './engineGeom'
 export { CYL_X }
 const BEARING_X = [-0.182, -0.091, 0, 0.091, 0.182]                    // 五道主軸承
-const BORE_R = 0.042
 const HEAD_Y = 0.183
 const CAM_Y = 0.115                                                    // 缸頭座標
 const CAM_Z = 0.055
@@ -204,14 +203,18 @@ registerProcedural('filler_cap_v1', (d) => {
   return g
 })
 
+/**
+ * 火星塞。F0：整組從缸頭 y +0.09 降到 +0.04，讓側電極（零件內 y −0.025）落在燃燒室頂（引擎座標 y ≈ 0.198，
+ * 見 engineGeom.ts 的 SPARK_Y），燃燒特效的火花才會和火焰接得起來。陶瓷段加長 12 mm，頂端仍插進點火線圈的橡膠套。
+ */
 registerProcedural('spark_plug_set_v2', (d) => {
   const g = new THREE.Group()
   for (const x of CYL_X) {
     const p = new THREE.Group()
     p.add(mesh(cylY(d, 0.007, 0.022), M.steel(), 0, -0.012, 0))                                    // 螺牙
     p.add(mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.012, 6), M.steel(), 0, 0.006, 0))         // 六角
-    p.add(mesh(cylY(d, 0.0055, 0.042), M.ceramic(), 0, 0.033, 0))                                   // 陶瓷
-    p.add(mesh(cylY(d, 0.0032, 0.008), M.steel(), 0, 0.058, 0))                                     // 頂端接頭
+    p.add(mesh(cylY(d, 0.0055, 0.054), M.ceramic(), 0, 0.039, 0))                                   // 陶瓷
+    p.add(mesh(cylY(d, 0.0032, 0.008), M.steel(), 0, 0.07, 0))                                      // 頂端接頭
     p.add(mesh(rbox(d, 0.002, 0.004, 0.004, 0.0005), M.steel(), 0, -0.025, 0.002))                  // 側電極
     p.position.x = x
     g.add(p)

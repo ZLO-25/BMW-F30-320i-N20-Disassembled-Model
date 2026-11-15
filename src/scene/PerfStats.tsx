@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { bvhStats } from './ModelResolver'
+import { setEngineCrankDeg } from './animations'
 
 /**
  * 效能小面板：網址加 ?stats=1 才會出現（P7 驗收「中階手機 30 fps」用）。
@@ -38,6 +39,8 @@ export function PerfStats() {
       const c = controls as unknown as Ctl
       if (c) { c.target.set(tx, ty, tz); c.update() } else camera.lookAt(tx, ty, tz)
     }
+    // F3：燃燒特效截圖用，把曲軸擺到指定角度（1 缸做功上死點 = 0°）
+    ;(window as unknown as { __n20crank: unknown }).__n20crank = setEngineCrankDeg
   }, [camera, controls])
   useEffect(() => {
     // E4：量「射線檢查」一次多久。pick(nx, ny, n) 回傳 n 次的平均毫秒與命中的零件數（自動測試用）

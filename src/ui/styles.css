@@ -366,6 +366,12 @@ p.verdict { margin: 0; }
 .stroke-table .stroke-power td { color: #ff8a3d; font-weight: 600; }
 .stroke-table .stroke-intake td { color: #6aa8ff; }
 .engine-run .row label { display: inline-flex; gap: 4px; align-items: center; margin-right: 12px; }
+.comb-advance { margin: 6px 0 2px; font-size: 13px; }
+.tag-illustrative { font-size: 11px; padding: 0 5px; border-radius: 4px; border: 1px solid currentColor; opacity: 0.7; }
+.stroke-table .comb-spark { width: 1.4em; text-align: center; color: #9cc8ff; }
+.stroke-table .comb-bar-cell { width: 42%; }
+.comb-bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.08); overflow: hidden; }
+.comb-bar > div { height: 100%; background: linear-gradient(90deg, #a83200, #ff8a3d, #ffd27a); transition: width 0.12s linear; }
 
 /* R5 螺栓級拆裝 */
 .bolt-modal { max-width: 520px; }

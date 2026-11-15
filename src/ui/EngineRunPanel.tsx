@@ -5,6 +5,9 @@ import { useAppStore } from '../store/useAppStore'
 import { engineStatus } from '../scene/animations'
 import { startEngineSound, stopEngineSound, setEngineRpm } from '../scene/engineSound'
 
+/** ⚡ 在跳火後顯示多久（面板每 125 ms 才更新一次，太短會漏掉） */
+const SPARK_SHOW_MS = 450
+
 const STROKE_KEY: Record<Stroke, 'strokeIntake' | 'strokeCompression' | 'strokePower' | 'strokeExhaust'> = {
   intake: 'strokeIntake', compression: 'strokeCompression', power: 'strokePower', exhaust: 'strokeExhaust',
 }
@@ -21,6 +24,7 @@ export function EngineRunPanel() {
   const [sound, setSound] = useState(false)
   const [status, setStatus] = useState(engineStatus())
   const rpm = rpmAt(t)
+  const discrete = status.mix > 0.5
 
   // 行程表一秒更新 8 次就夠（不要每格 setState）
   useEffect(() => {
@@ -44,14 +48,28 @@ export function EngineRunPanel() {
         <label><input type="checkbox" checked={slow} onChange={e => setSlow(e.target.checked)} /> {ui('engineSlow', lang).replace('{n}', String(SLOW))}</label>
         <label><input type="checkbox" checked={sound} onChange={e => setSound(e.target.checked)} /> {ui('engineSound', lang)}</label>
       </div>
+      <p className="comb-advance">
+        {ui('combAdvance', lang).replace('{n}', status.advance.toFixed(0))} <span className="tag-illustrative">{ui('combIllustrative', lang)}</span>
+      </p>
       <table className="gear-table stroke-table"><tbody>
-        {[1, 2, 3, 4].map((c, i) => (
-          <tr key={c} className={`stroke-${status.strokes[i]}`}>
-            <td>{ui('cylinder', lang).replace('{n}', String(c))}</td>
-            <td>{ui(STROKE_KEY[status.strokes[i]], lang)}</td>
-          </tr>
-        ))}
+        {[1, 2, 3, 4].map((c, i) => {
+          const sparkOn = discrete && status.sparkAgo[i] < SPARK_SHOW_MS
+          return (
+            <tr key={c} className={`stroke-${status.strokes[i]}`}>
+              <td>{ui('cylinder', lang).replace('{n}', String(c))}</td>
+              <td>{ui(STROKE_KEY[status.strokes[i]], lang)}</td>
+              <td className="comb-spark" aria-label={sparkOn ? ui('combSpark', lang) : undefined}>{sparkOn ? '⚡' : ''}</td>
+              <td className="comb-bar-cell">
+                <div className="comb-bar" role="meter" aria-label={ui('combPressure', lang) + ' ' + c} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(status.pressure[i] * 100)}>
+                  <div style={{ width: `${Math.round(status.pressure[i] * 100)}%` }} />
+                </div>
+              </td>
+            </tr>
+          )
+        })}
       </tbody></table>
+      <p className="muted small">{ui('combPressure', lang)}（{ui('combIllustrative', lang)}）· {ui(discrete ? 'combDiscrete' : 'combAveraged', lang)}</p>
+      <p className="muted small">{ui('combNote', lang)}</p>
       <p className="muted small">{ui('engineSoundNote', lang)}</p>
     </div>
   )

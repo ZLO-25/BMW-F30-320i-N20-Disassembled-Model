@@ -1,6 +1,10 @@
 {
- "when": "2026-11-14T20:04:32.827Z",
+ "when": "2026-11-15T11:49:20.484Z",
  "chunks": {
+  "CombustionFx": {
+   "rawKB": 7,
+   "gzipKB": 3
+  },
   "CompareView": {
    "rawKB": 4,
    "gzipKB": 2
@@ -22,8 +26,8 @@
    "gzipKB": 0
   },
   "index": {
-   "rawKB": 467,
-   "gzipKB": 144
+   "rawKB": 492,
+   "gzipKB": 154
   },
   "learnData": {
    "rawKB": 114,
@@ -48,40 +52,40 @@
  },
  "runs": {
   "high": {
-   "msToStats": 9149,
+   "msToStats": 10970,
    "fps": 1,
-   "calls": 919,
-   "callsMin": 919,
-   "triangles": 1419716,
-   "geometries": 474,
+   "calls": 947,
+   "callsMin": 947,
+   "triangles": 1450364,
+   "geometries": 488,
    "dpr": 1,
-   "frameMsP50": 1256,
-   "frameMsP95": 1377.9,
+   "frameMsP50": 1485,
+   "frameMsP95": 1490.4,
    "programs": 55,
    "textures": 43,
    "renders": 4,
-   "heapMB": 95,
+   "heapMB": 93,
    "longTasks": {
     "count": 9,
-    "longestMs": 7780
+    "longestMs": 8970
    },
    "scene": {
-    "meshes": 471,
-    "triangles": 745442
+    "meshes": 485,
+    "triangles": 760766
    },
    "idleRendersIn3s": 0,
    "moving": {
-    "frames": 4,
-    "p50": 2383,
-    "p95": 2500
+    "frames": 3,
+    "p50": 3917,
+    "p95": 4167
    },
-   "callsMinAfterMoving": 919,
+   "callsMinAfterMoving": 947,
    "pickMs": {
-    "ms": 1.030000000000776,
+    "ms": 1.7533333333364378,
     "hits": 20.2,
     "bvh": {
-     "built": 461,
-     "ms": 311.09999999962747,
+     "built": 475,
+     "ms": 300.39999999990687,
      "queued": 0
     }
    },
@@ -92,45 +96,45 @@
    "switch6": {
     "texturesBefore": 43,
     "texturesAfter": 43,
-    "geometriesBefore": 474,
-    "geometriesAfter": 474
+    "geometriesBefore": 488,
+    "geometriesAfter": 488
    }
   },
   "mid": {
-   "msToStats": 8027,
-   "fps": 3,
-   "calls": 922,
-   "callsMin": 465,
-   "triangles": 262116,
-   "geometries": 455,
+   "msToStats": 7599,
+   "fps": 2,
+   "calls": 479,
+   "callsMin": 479,
+   "triangles": 268192,
+   "geometries": 469,
    "dpr": 1,
-   "frameMsP50": 401.2,
-   "frameMsP95": 831.6,
+   "frameMsP50": 518.1,
+   "frameMsP95": 981.6,
    "programs": 23,
    "textures": 11,
-   "renders": 7,
-   "heapMB": 58,
+   "renders": 8,
+   "heapMB": 49,
    "longTasks": {
-    "count": 12,
-    "longestMs": 6764
+    "count": 11,
+    "longestMs": 6212
    },
    "scene": {
-    "meshes": 454,
-    "triangles": 254450
+    "meshes": 468,
+    "triangles": 260526
    },
    "idleRendersIn3s": 0,
    "moving": {
-    "frames": 14,
-    "p50": 500,
-    "p95": 567
+    "frames": 10,
+    "p50": 683,
+    "p95": 933
    },
-   "callsMinAfterMoving": 465,
+   "callsMinAfterMoving": 479,
    "pickMs": {
-    "ms": 1.23666666666201,
-    "hits": 13.2,
+    "ms": 1.7166666666666666,
+    "hits": 17.066666666666666,
     "bvh": {
-     "built": 331,
-     "ms": 128.80000000004657,
+     "built": 344,
+     "ms": 104.10000000009313,
      "queued": 0
     }
    },
@@ -141,45 +145,45 @@
    "switch6": {
     "texturesBefore": 11,
     "texturesAfter": 11,
-    "geometriesBefore": 455,
-    "geometriesAfter": 455
+    "geometriesBefore": 469,
+    "geometriesAfter": 469
    }
   },
   "low": {
-   "msToStats": 7095,
+   "msToStats": 5959,
    "fps": 2,
    "calls": 0,
    "callsMin": 0,
-   "triangles": 93054,
-   "geometries": 445,
+   "triangles": 95178,
+   "geometries": 459,
    "dpr": 1,
-   "frameMsP50": 727.7,
-   "frameMsP95": 727.7,
+   "frameMsP50": 601.3,
+   "frameMsP95": 601.3,
    "programs": 19,
    "textures": 9,
    "renders": 3,
-   "heapMB": 34,
+   "heapMB": 36,
    "longTasks": {
-    "count": 7,
-    "longestMs": 5973
+    "count": 8,
+    "longestMs": 5020
    },
    "scene": {
-    "meshes": 444,
-    "triangles": 90312
+    "meshes": 458,
+    "triangles": 92436
    },
    "idleRendersIn3s": 0,
    "moving": {
-    "frames": 18,
-    "p50": 367,
-    "p95": 417
+    "frames": 21,
+    "p50": 317,
+    "p95": 350
    },
-   "callsMinAfterMoving": 455,
+   "callsMinAfterMoving": 469,
    "pickMs": {
-    "ms": 0.7966666666713232,
-    "hits": 9.666666666666666,
+    "ms": 1.2233333333395422,
+    "hits": 8.666666666666666,
     "bvh": {
-     "built": 273,
-     "ms": 37.99999999976717,
+     "built": 284,
+     "ms": 29.899999999906868,
      "queued": 0
     }
    },
@@ -190,13 +194,13 @@
    "switch6": {
     "texturesBefore": 9,
     "texturesAfter": 9,
-    "geometriesBefore": 445,
-    "geometriesAfter": 445
+    "geometriesBefore": 459,
+    "geometriesAfter": 459
    }
   }
  },
  "pickNoBvh": {
-  "ms": 4.843333333334885,
+  "ms": 3.289999999998448,
   "hits": 4.6,
   "bvh": {
    "built": 0,

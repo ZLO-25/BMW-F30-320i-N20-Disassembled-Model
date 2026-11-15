@@ -31,15 +31,17 @@ export interface QualityProfile {
   bloom: boolean
   shadowMap: 0 | 1024 | 2048
   contact: 0 | 512 | 1024
+  /** F1 燃燒特效：simple = 視線 4 步、一層雜訊（L0）；full = 7 步、兩層 */
+  combustion: 'simple' | 'full'
 }
 
 const LADDER: Record<Level, Omit<QualityProfile, 'level'>> = {
-  5: { detail: 'high', dprMax: 2, msaa: 4, nativeAA: false, ao: 'full', bloom: true, shadowMap: 2048, contact: 1024 },
-  4: { detail: 'high', dprMax: 1.5, msaa: 4, nativeAA: false, ao: 'full', bloom: false, shadowMap: 2048, contact: 1024 },
-  3: { detail: 'high', dprMax: 1.25, msaa: 2, nativeAA: false, ao: 'half', bloom: false, shadowMap: 1024, contact: 512 },
-  2: { detail: 'high', dprMax: 1, msaa: 0, nativeAA: true, ao: 'off', bloom: false, shadowMap: 1024, contact: 512 },
-  1: { detail: 'mid', dprMax: 1.5, msaa: 0, nativeAA: false, ao: 'off', bloom: false, shadowMap: 0, contact: 512 },
-  0: { detail: 'low', dprMax: 1, msaa: 0, nativeAA: false, ao: 'off', bloom: false, shadowMap: 0, contact: 0 },
+  5: { detail: 'high', dprMax: 2, msaa: 4, nativeAA: false, ao: 'full', bloom: true, shadowMap: 2048, contact: 1024, combustion: 'full' },
+  4: { detail: 'high', dprMax: 1.5, msaa: 4, nativeAA: false, ao: 'full', bloom: false, shadowMap: 2048, contact: 1024, combustion: 'full' },
+  3: { detail: 'high', dprMax: 1.25, msaa: 2, nativeAA: false, ao: 'half', bloom: false, shadowMap: 1024, contact: 512, combustion: 'full' },
+  2: { detail: 'high', dprMax: 1, msaa: 0, nativeAA: true, ao: 'off', bloom: false, shadowMap: 1024, contact: 512, combustion: 'full' },
+  1: { detail: 'mid', dprMax: 1.5, msaa: 0, nativeAA: false, ao: 'off', bloom: false, shadowMap: 0, contact: 512, combustion: 'full' },
+  0: { detail: 'low', dprMax: 1, msaa: 0, nativeAA: false, ao: 'off', bloom: false, shadowMap: 0, contact: 0, combustion: 'simple' },
 }
 
 /** 手機的「精緻」= 中等幾何 + 半解析度 AO（相當於 E2 之前的 mid），其他欄位照 L1 */
