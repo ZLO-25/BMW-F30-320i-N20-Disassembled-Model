@@ -4,6 +4,7 @@
  * 桿件類（控制臂、連桿）一律沿 +X 畫，長度固定，實際方向用資料的 rotation 轉。
  */
 import * as THREE from 'three'
+import { ORIGIN_DOWNPIPE, ORIGIN_MID, ORIGIN_MUFFLER, J0, MID_PATH, MUFFLER_INLET_PATH, DOWNPIPE_PATH, DOWNPIPE_TOP_PATH, PIPE_R, toLocal, pathLocal } from './exhaustGeom'
 import { registerProcedural, segs, mat, M, mesh, rbox, cylX, cylY, cylZ, tube, at, type Detail } from './registry'
 
 const grp = (name = '', ...objs: THREE.Object3D[]) => { const g = new THREE.Group(); g.name = name; if (objs.length) g.add(...objs); return g }
@@ -347,31 +348,38 @@ registerProcedural('trans_crossmember_v1', (d) => grp('',
 ))
 
 // ───────────────────────── 排氣 ─────────────────────────
-// 排氣系統串接（整車座標）：渦輪出口 (1.09, 0.468, 0.27) → 下導管 + 觸媒 → 前法蘭 (0.40, 0.15, 0.20)
-//   → 中段（x 0.40 → −1.36，尾端爬到 y 0.25、z 0.30）→ 消音器進口尖端 (−1.36, 0.25, 0.30)。
-// 下導管原點在 (1.15, 0.17, 0.22)，所以渦輪出口在區域座標 (−0.06, 0.298, 0.05)；改任何一端要一起改。
+// 排氣系統串接（座標與原點都在 exhaustGeom.ts，exhaust.test.ts 會檢查接點、連續性、與底盤零件的間隙）：
+//   渦輪出口 J0 (1.09, 0.468, 0.27) → 下導管 + 觸媒 → J1 (0.40, 0.15, 0.20)
+//   → 中段（一根直管 x 0.40 → −1.36，y 0.15 / z 0.20）→ J2 (−1.36, 0.15, 0.20) → 消音器進口管
+//   → 在副車架與後軸下方（y 0.15）通過，到 x −1.67 才爬升到 y 0.21 進入箱體。
+// 改任何原點或接點：exhaustGeom.ts 與 data/parts/exhaust.json 一起改。
 registerProcedural('downpipe_v1', (d) => {
   const g = grp()
-  g.add(mesh(cylY(d, 0.045, 0.012), M.darkSteel(), -0.06, 0.292, 0.05))                    // 渦輪出口法蘭
-  g.add(new THREE.Mesh(tube(d, [[-0.06, 0.29, 0.05], [-0.06, 0.2, 0.05]], 0.032), M.steel()))
-  g.add(mesh(cylY(d, 0.07, 0.16), M.steel(), -0.06, 0.15, 0.05))                          // 觸媒
-  g.add(new THREE.Mesh(tube(d, [[-0.06, 0.1, 0.05], [-0.06, 0.04, 0.05], [-0.16, -0.01, 0.0], [-0.3, -0.02, -0.02], [-0.75, -0.02, -0.02]], 0.03), M.steel()))
-  g.add(mesh(cylX(d, 0.04, 0.012), M.darkSteel(), -0.745, -0.02, -0.02))                  // 與中段相接的法蘭
+  const O = ORIGIN_DOWNPIPE
+  const top = toLocal(O, J0)
+  g.add(mesh(cylY(d, 0.045, 0.012), M.darkSteel(), top[0], top[1] - 0.006, top[2]))         // 渦輪出口法蘭
+  g.add(new THREE.Mesh(tube(d, pathLocal(O, DOWNPIPE_TOP_PATH), 0.032), M.steel()))
+  g.add(mesh(cylY(d, 0.07, 0.16), M.steel(), top[0], top[1] - 0.148, top[2]))              // 觸媒
+  const run = pathLocal(O, DOWNPIPE_PATH)
+  g.add(new THREE.Mesh(tube(d, run, PIPE_R), M.steel()))
+  const e = run[run.length - 1]
+  g.add(mesh(cylX(d, 0.04, 0.012), M.darkSteel(), e[0] + 0.005, e[1], e[2]))               // 與中段相接的法蘭
   return g
 })
 registerProcedural('exhaust_mid_v1', (d) => {
   const g = grp()
-  g.add(mesh(cylX(d, 0.03, 1.5), M.steel(), 0.13, 0, 0))                                    // 直管 x 0.88 → −0.62
+  const [a, b] = pathLocal(ORIGIN_MID, MID_PATH)                                          // 區域 x 0.88 → −0.88，y = z = 0
+  const len = a[0] - b[0], cx = (a[0] + b[0]) / 2
+  g.add(mesh(cylX(d, PIPE_R, len), M.steel(), cx, a[1], a[2]))                              // 直管
   g.add(mesh(cylX(d, 0.07, 0.4), M.steel(), 0.1, 0, 0))                                    // 共鳴箱
-  g.add(new THREE.Mesh(tube(d, [[-0.6, 0, 0], [-0.72, 0.01, 0.02], [-0.82, 0.1, 0.1], [-0.88, 0.1, 0.1]], 0.03), M.steel()))  // 尾端彎到消音器進口
-  g.add(mesh(cylX(d, 0.04, 0.05), M.darkSteel(), 0.875, 0, 0), mesh(cylX(d, 0.04, 0.05), M.darkSteel(), -0.875, 0.1, 0.1))  // 前後束環
+  g.add(mesh(cylX(d, 0.04, 0.05), M.darkSteel(), a[0] - 0.005, a[1], a[2]), mesh(cylX(d, 0.04, 0.05), M.darkSteel(), b[0] + 0.005, b[1], b[2]))  // 前後束環
   for (const x of [0.3, -0.45]) g.add(mesh(cylY(d, 0.01, 0.07), M.rubber(), x, 0.065, 0))  // 吊耳
   return g
 })
 registerProcedural('muffler_v1', (d) => {
   const g = grp()
   g.add(mesh(rbox(d, 0.45, 0.2, 0.9, 0.06), M.steel()))
-  g.add(mesh(cylX(d, 0.03, 0.4), M.steel(), 0.4, 0, 0.3))  // 進口尖端在 x=+0.6，接中段尾端                                 // 進口
+  g.add(new THREE.Mesh(tube(d, pathLocal(ORIGIN_MUFFLER, MUFFLER_INLET_PATH), PIPE_R), M.steel()))  // 進口管：從 J2 貼地走，過副車架後爬升進箱體
   g.add(mesh(cylX(d, 0.035, 0.18), M.machinedAl(), -0.3, 0, -0.3))  // 單支尾管在左側（-Z，駕駛座側），依 ZL 實車車尾照片
   for (const z of [-0.2, 0.2]) g.add(mesh(cylY(d, 0.004, 0.12), M.rubber(), 0, 0.14, z))  // 吊耳
   return g
