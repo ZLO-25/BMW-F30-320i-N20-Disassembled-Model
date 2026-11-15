@@ -199,3 +199,8 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 - `ShiftPanel.tsx`：125 ms 輪詢讀 `shiftStatus()`，不每格 setState；按住型按鈕用 pointer 事件，鍵盤只掛在面板根元素；面板卸載會放開離合器與煞車並關掉引擎聲。
 - **手排齒比（`MANUAL_RATIOS`）仍是示意值**。官方候選：BMW 新聞稿「BMW 320i, Media Information 1/2012」4.551 / 2.548 / 1.659 / 1.230 / 1.000 / 0.830、R 4.138（尚未核對，實作時 PDF 開不到）。核對後只改 gearbox.ts 那一個常數並登記 sources.json。
 - 倒檔在 H 型圖 1 檔左邊只是介面排版，實車位置與倒檔構造都待確認。
+
+## 離合器總泵 v2 之後（2026-11-15）
+- `trans.manual.master_cylinder` 改用 `clutch_master_v2`（`transParts.ts`）：座艙側的支架 + 總泵 + 踏板，供油管穿過防火牆接到 `brk.master_cylinder` 的油壺頂，壓力管沿防火牆往下接鐘形殼上方。位置 (0.6, 0.8, −0.5) 是示意（`positionApproximate`），原點在防火牆座艙側表面。
+- 踏板臂 + 踏板墊在命名 group `pedal`（原點在樞軸，繞 Z 轉），之後要做踩踏動畫就轉它；目前沒有動畫。
+- 供油管 / 壓力管終點用整車座標寫（`W2L()`）：`brk.master_cylinder` 或手排鐘形殼（`gearbox_manual_v1`）移動時，要一起改這兩條管的終點。
