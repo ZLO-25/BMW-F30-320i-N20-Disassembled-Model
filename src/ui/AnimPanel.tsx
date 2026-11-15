@@ -4,7 +4,7 @@ import { t, ui, fmt } from '../core/i18n'
 import { useAppStore } from '../store/useAppStore'
 import { EngineRunPanel } from './EngineRunPanel'
 import { ShiftPanel } from './ShiftPanel'
-import { animationsFor, ANIM_BY_ID, GEARS, MANUAL_RATIOS, MANUAL_RATIOS_NOTE, AUTO_RATIOS, AUTO_ELEMENTS } from '../scene/animations'
+import { animationsFor, resolveAnim, ANIM_BY_ID, GEARS, MANUAL_RATIOS, MANUAL_RATIOS_NOTE, AUTO_RATIOS, AUTO_ELEMENTS } from '../scene/animations'
 
 /** 側欄「動畫」分頁：選動畫、拉滑桿或選檔位，下面顯示現在這一段在做什麼 */
 export function AnimPanel({ data }: { data: DataBundle }) {
@@ -23,6 +23,8 @@ export function AnimPanel({ data }: { data: DataBundle }) {
   const setCompareOpen = useAppStore(s => s.setCompareOpen)
   const removedIds = useAppStore(s => s.removedIds)
   const installAll = useAppStore(s => s.installAll)
+  // 手排的「各檔位動力路徑」已併進換檔台：舊選擇自動換過去
+  useEffect(() => { if (variant && anim && resolveAnim(anim, variant) !== anim) setAnim(resolveAnim(anim, variant)) }, [variant, anim, setAnim])
   if (!variant) return null
 
   const list = animationsFor(variant)

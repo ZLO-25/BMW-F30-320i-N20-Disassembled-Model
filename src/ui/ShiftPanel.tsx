@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ui, fmt, type UiKey } from '../core/i18n'
 import { useAppStore } from '../store/useAppStore'
 import { shiftRequest, shiftStatus, MANUAL_RATIOS } from '../scene/animations'
-import { shiftPhaseKey, REFUSAL_KEY, REDLINE, type Gear, type GearboxInputs, type ShiftPhaseKey } from '../core/gearbox'
+import { shiftPhaseKey, REFUSAL_KEY, REDLINE, SYNC_OF, coupling, type Gear, type GearboxInputs, type ShiftPhaseKey } from '../core/gearbox'
 import { CHALLENGES, observeChallenges, newChallengeState, loadChallenges, saveChallenges, type ChallengeState } from '../core/shiftChallenges'
 import { startEngineSound, stopEngineSound, setEngineRpm } from '../scene/engineSound'
 
@@ -23,6 +23,34 @@ function Bar({ label, rpm }: { label: string; rpm: number }) {
       <span className="rpm-label">{label}</span>
       <span className="rpm-bar"><i style={{ width: `${v * 100}%` }} className={v > 0.93 ? 'hot' : ''} /></span>
       <span className="rpm-val">{Math.round(rpm).toLocaleString()} rpm</span>
+    </div>
+  )
+}
+
+const PATH_NODES = ['pathEngine', 'pathClutch', 'pathInput', 'pathCounter', 'pathGear', 'pathSleeve', 'pathOutput'] as const
+
+/** 動力路徑：一排方塊，鎖上檔位且離合器接上時全部亮橘色；斷在哪一格就停在哪一格 */
+function PowerPath({ st, shown, ratio, lang }: { st: Readonly<ReturnType<typeof shiftStatus>>; shown: Gear; ratio: number | null; lang: 'zh' | 'en' }) {
+  const inGear = st.locked && st.gear !== 'N'
+  const clutchOn = coupling(st.pedal) > 0.5
+  // 每個方塊「到這裡為止有沒有動力」：引擎永遠有；離合器分離就斷在離合器後面；沒鎖檔就斷在副軸後面
+  const lit = [true, true, clutchOn, clutchOn, clutchOn && inGear, clutchOn && inGear, clutchOn && inGear]
+  const sync = SYNC_OF[shown]
+  const gearName = shown === 'N' ? ui('pathGearN', lang) : shown === 'R' ? ui('pathGearR', lang) : fmt(ui('pathGearN1', lang), { g: shown })
+  const why = shown === 'N' ? ui('pathWhyN', lang)
+    : !clutchOn ? ui('pathWhyClutch', lang)
+    : !inGear ? ui('pathWhyShifting', lang)
+    : shown === 'R' ? ui('pathWhyR', lang)
+    : fmt(ui(ratio! > 1.001 ? 'pathWhyLow' : ratio! < 0.999 ? 'pathWhyOver' : 'pathWhyDirect', lang), { g: shown, r: Math.abs(ratio!).toFixed(3), s: sync ? sync[0].replace('_', '–') : '' })
+  return (
+    <div className="power-path">
+      <h4 className="shift-title">{ui('pathTitle', lang)}</h4>
+      <ol className="path-chain">
+        {PATH_NODES.map((k, i) => (
+          <li key={k} className={lit[i] ? 'lit' : ''}>{k === 'pathGear' ? gearName : ui(k, lang)}</li>
+        ))}
+      </ol>
+      <p className="small">{why}</p>
     </div>
   )
 }
@@ -111,6 +139,8 @@ export function ShiftPanel() {
         <button className={`gate-n ${shown === 'N' ? 'on' : ''}`} onClick={() => pick('N')}>{ui('shiftGateN', lang)}</button>
         {GATE_BOTTOM.map((g, i) => g ? gateBtn(g) : <span key={i} />)}
       </div>
+
+      <PowerPath st={st} shown={shown} ratio={ratio} lang={lang} />
 
       <div className="pedals">
         <button className={`pedal ${clutchHeld ? 'on' : ''}`} {...hold(setClutch)}>{ui('shiftClutch', lang)}</button>

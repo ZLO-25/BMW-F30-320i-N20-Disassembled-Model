@@ -204,3 +204,11 @@ docs/            PLAN、DATA_SCHEMA、MODEL_SOURCES
 - 引擎聲兩種來源自動選：`public/sounds/engine/manifest.json` 的 `samples` 有東西 → 實車錄音交叉淡化 + 變速；空的 → 合成（每兩圈四次排氣脈衝的波形表）。純邏輯在 `src/core/engineSoundMix.ts`（有測試），播放在 `src/scene/engineSound.ts`（對外介面不變）。
 - **錄音只能是自己錄的或 CC0 / CC-BY**，登記在 `CREDITS.md`。YouTube 影片（例如 BIMMERPOST N20 改裝排氣）不能放。錄法與處理見 `docs/ENGINE_SOUND.md`，切循環用 `scripts/prep_engine_loops.py`（m4a 64 kbps 單聲道，前後留緩衝避開解碼空白）。
 - 目前錄音是 ZL 實車兩段（冷車怠速 1,428、補油 2,802 rpm，轉速由頻譜反推，見 docs/ENGINE_SOUND.md）；最高那段往上最多推 `RATE_TOP_MAX` = 2.6 倍撐到紅線。
+
+## 離合器總泵 v2 之後（2026-11-15）
+- `trans.manual.master_cylinder` 改用 `clutch_master_v2`（`transParts.ts`）：座艙側的支架 + 總泵 + 踏板，供油管穿過防火牆接到 `brk.master_cylinder` 的油壺頂，壓力管沿防火牆往下接鐘形殼上方。位置 (0.6, 0.8, −0.5) 是示意（`positionApproximate`），原點在防火牆座艙側表面。
+- 踏板臂 + 踏板墊在命名 group `pedal`（原點在樞軸，繞 Z 轉），之後要做踩踏動畫就轉它；目前沒有動畫。
+- 供油管 / 壓力管終點用整車座標寫（`W2L()`）：`brk.master_cylinder` 或手排鐘形殼（`gearbox_manual_v1`）移動時，要一起改這兩條管的終點。
+
+## 動畫合併（手排換檔台 + 動力路徑）之後
+- 手排的「各檔位動力路徑」已併進 `manual_shift`（換檔台裡的 `PowerPath` 元件，`ShiftPanel.tsx`）；`power_path` 動畫在手排清單隱藏（`AnimDef.hiddenIn`），自排與對照模式（`CompareView`）照舊使用。舊的 `power_path` 選擇或學習目標在手排會經 `resolveAnim()` 轉到 `manual_shift`。

@@ -31,6 +31,8 @@ export interface AnimPhase { until: number; label: Bilingual }
 export interface AnimDef {
   id: string
   variant: Variant | 'both'
+  /** 清單裡不顯示的變體（功能已併進別的項目；CompareView 仍直接用它） */
+  hiddenIn?: Variant[]
   title: Bilingual
   desc: Bilingual
   control: 'slider' | 'gear' | 'rpm' | 'shift'
@@ -184,8 +186,9 @@ const tcLockup: AnimDef = {
 
 const powerPath: AnimDef = {
   id: 'power_path', variant: 'both', control: 'gear',
+  hiddenIn: ['manual'],   // 手排的動力路徑已併進 manual_shift（手排換檔台）；對照模式仍用這個動畫的手排分支
   title: { zh: '各檔位的動力路徑', en: 'Power path in each gear' },
-  desc: { zh: '橘色 = 正在傳遞動力的零件。手排：看哪一對齒輪被同步器鎖上；自排：看哪三個離合器 / 煞車接合，動力怎麼穿過行星齒輪組。', en: 'Orange = parts carrying power. Manual: see which gear pair the synchroniser locks. Automatic: see which three clutches/brakes engage and how power passes through the planetary sets.' },
+  desc: { zh: '橘色 = 正在傳遞動力的零件。看哪三個離合器 / 煞車接合，動力怎麼穿過行星齒輪組。（手排的動力路徑在「手排換檔台」裡。）', en: 'Orange = parts carrying power. See which three clutches/brakes engage and how power passes through the planetary sets. (For the manual, see the power path inside the manual shift bench.)' },
   parts: ['trans.manual.input_shaft', 'trans.manual.countershaft', 'trans.manual.mainshaft', 'trans.manual.synchro_1_2', 'trans.manual.synchro_3_4', 'trans.manual.synchro_5_6', 'trans.manual.output_flange',
     'trans.auto.torque_converter', 'trans.auto.clutch_packs', 'trans.auto.gearsets', 'trans.auto.output_flange', 'trans.auto.flexplate', 'trans.manual.dmf', 'trans.manual.clutch_disc', 'trans.manual.pressure_plate'],
   apply: ({ get, gear, time, variant }) => {
@@ -393,10 +396,10 @@ function poseGearbox(get: AnimCtx['get'], b: GearboxState, dt: number) {
 
 const manualShift: AnimDef = {
   id: 'manual_shift', variant: 'manual', control: 'shift',
-  title: { zh: '🕹 手排換檔台：自己換檔', en: '🕹 Manual shift bench: change gears yourself' },
+  title: { zh: '🕹 手排換檔台與動力路徑', en: '🕹 Manual shift bench & power path' },
   desc: {
-    zh: '自己踩離合器、打檔、給油，看變速箱裡每個零件怎麼跟著動：離合器分離 → 排檔桿推撥叉 → 套筒退回空檔 → 同步環用摩擦把輸入軸拖到新轉速（紅）→ 犬齒咬合（綠）→ 放離合器。齒輪排列為示意，不是 GS6-17BG 的實際配置。',
-    en: 'Press the clutch, pick a gear and add throttle, and watch every part respond: clutch releases → lever pushes the fork → sleeve returns to neutral → the synchro ring drags the input shaft to the new speed (red) → dog teeth engage (green) → clutch released. The gear layout is schematic, not the real GS6-17BG arrangement.',
+    zh: '自己踩離合器、打檔、給油，看變速箱裡每個零件怎麼跟著動，也能看每個檔位的動力路徑（橘色 = 正在傳遞動力、綠色 = 被鎖上的套筒）：離合器分離 → 排檔桿推撥叉 → 套筒退回空檔 → 同步環用摩擦把輸入軸拖到新轉速（紅）→ 犬齒咬合（綠）→ 放離合器。齒輪排列為示意，不是 GS6-17BG 的實際配置。',
+    en: 'Press the clutch, pick a gear and add throttle, and watch every part respond, including each gear\'s power path (orange = carrying power, green = locked sleeve): clutch releases → lever pushes the fork → sleeve returns to neutral → the synchro ring drags the input shaft to the new speed (red) → dog teeth engage (green) → clutch released. The gear layout is schematic, not the real GS6-17BG arrangement.',
   },
   parts: [MAN + 'mainshaft', MAN + 'dmf', MAN + 'clutch_disc', MAN + 'pressure_plate', MAN + 'csc', MAN + 'input_shaft', MAN + 'countershaft',   // 第一個 = 鏡頭對準的零件
     MAN + 'synchro_1_2', MAN + 'synchro_3_4', MAN + 'synchro_5_6', MAN + 'shift_forks', MAN + 'shift_lever', MAN + 'output_flange'],
@@ -412,4 +415,7 @@ const manualShift: AnimDef = {
 export const ANIMATIONS: AnimDef[] = [engineRunning, manualShift, clutchDisengage, synchroShift, tcLockup, powerPath]
 export const ANIM_BY_ID = new Map(ANIMATIONS.map(a => [a.id, a]))
 const ALL_PARTS = [...new Set(ANIMATIONS.flatMap(a => a.parts))]
-export const animationsFor = (variant: Variant) => ANIMATIONS.filter(a => a.variant === 'both' || a.variant === variant)
+export const animationsFor = (variant: Variant) => ANIMATIONS.filter(a => (a.variant === 'both' || a.variant === variant) && !a.hiddenIn?.includes(variant))
+/** 舊連結 / 學習目標若指到已併掉的動畫，換成現在的項目（手排的 power_path → manual_shift） */
+export const resolveAnim = (id: string, variant: Variant | null): string =>
+  id === 'power_path' && variant === 'manual' ? 'manual_shift' : id

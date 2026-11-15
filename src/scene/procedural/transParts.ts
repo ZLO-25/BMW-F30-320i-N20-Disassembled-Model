@@ -207,12 +207,60 @@ registerProcedural('dmf_v1', (d) => {
   return grp('', spin)
 })
 
-registerProcedural('clutch_master_v1', (d) => grp('',
-  mesh(cylX(d, 0.016, 0.1), M.castAl()),
-  mesh(cylY(d, 0.02, 0.04), M.glossPlastic(), -0.03, 0.04, 0),
-  mesh(rbox(d, 0.01, 0.22, 0.03, 0.004), M.darkSteel(), 0.06, -0.1, 0, 0, 0, -0.3),
-  mesh(rbox(d, 0.06, 0.012, 0.05, 0.004), M.rubber(), 0.1, -0.2, 0),
-))
+/**
+ * 離合器總泵與踏板 v2（示意）：整組畫在駕駛腳邊、貼著防火牆的座艙側，油管穿過防火牆接到引擎室那邊。
+ * 原點在「防火牆座艙側表面」（x = 0 就是防火牆，−X 是座艙）；零件 position = (0.6, 0.8, −0.5)。
+ *
+ *   側視（車頭在右）：
+ *        支架側板 ╔═●pivot═╗▓防火牆▓
+ *                 ║  │ ═╪═[總泵]══ 供油管 → 煞車油壺（越過倍力器上方）
+ *                 ║  │踏板臂        壓力管 → 鐘形殼上方（沿防火牆引擎室側往下）
+ *                 ╚══│══╝
+ *                 ▄▄▄┘ 踏板墊
+ *
+ * 管路終點用整車座標寫（W2L 換成區域座標）：
+ *   油壺頂：brk.master_cylinder (0.82, 0.8, −0.38) + 油壺區域 (0.05, 0.06, 0) → 頂面 y ≈ 0.895
+ *   鐘形殼：gearbox_manual_v1 在 (0.8, 0.31, 0)，錐形殼 x 0.8（r 0.175）→ 0.64（r 0.105）；
+ *           終點取 x = 0.72（r ≈ 0.14）上方偏左 40° 的表面點。這兩個零件移動時，管路終點要一起改。
+ * 動畫用：踏板臂 + 踏板墊在命名 group `pedal`，原點在樞軸（繞 Z 轉）。目前沒有動畫。
+ */
+const CM_ORIGIN = [0.6, 0.8, -0.5] as const
+const W2L = (x: number, y: number, z: number): [number, number, number] => [x - CM_ORIGIN[0], y - CM_ORIGIN[1], z - CM_ORIGIN[2]]
+registerProcedural('clutch_master_v2', (d) => {
+  const g = grp('')
+  const low = d === 'low'
+  // 支架：貼在防火牆座艙側的底板 + 兩片側板
+  g.add(mesh(rbox(d, 0.012, 0.17, 0.16, 0.004), M.steel(), -0.006, 0.04, 0))
+  for (const z of [-0.04, 0.04]) g.add(mesh(rbox(d, 0.13, 0.15, 0.006, 0.002), M.steel(), -0.075, 0.045, z))
+  // 樞軸銷
+  g.add(mesh(cylZ(d, 0.007, 0.1), M.darkSteel(), -0.11, 0.1, 0))
+  // 總泵：凸緣貼在底板上，本體朝防火牆（+X），推桿 + 防塵套接到踏板臂
+  g.add(mesh(rbox(d, 0.012, 0.06, 0.06, 0.004), M.castAl(), -0.018, -0.02, 0))
+  g.add(mesh(cylX(d, 0.016, 0.07), M.castAl(), -0.05, -0.02, 0))
+  g.add(mesh(cylX(d, 0.011, 0.03, 0.016), M.rubber(), -0.1, -0.02, 0))       // 防塵套
+  g.add(mesh(cylX(d, 0.004, 0.05), M.steel(), -0.115, -0.02, 0))             // 推桿
+  g.add(mesh(cylY(d, 0.01, 0.025), M.blackPlastic(), -0.04, -0.0, 0))        // 供油接頭
+  // 踏板（命名 group，原點在樞軸；示意：臂往下往後傾 ~9°，底端是橡膠踏板墊）
+  const pedal = grp('pedal')
+  pedal.position.set(-0.11, 0.1, 0)
+  const tilt = -0.15, L = 0.5
+  const arm = mesh(rbox(d, 0.016, L, 0.022, 0.004), M.darkSteel(), Math.sin(tilt) * L / 2, -Math.cos(tilt) * L / 2, 0, 0, 0, tilt)
+  pedal.add(arm)
+  pedal.add(mesh(rbox(d, 0.014, 0.045, 0.09, 0.005), M.rubber(), Math.sin(tilt) * L - 0.002, -Math.cos(tilt) * L + 0.004, 0, 0, 0, tilt))
+  g.add(pedal)
+  // 供油管（橡膠）：總泵接頭 → 穿過防火牆 → 越過倍力器上方 → 煞車油壺頂
+  g.add(mesh(tube(d, [
+    W2L(0.56, 0.815, -0.5), W2L(0.585, 0.9, -0.5), W2L(0.64, 0.945, -0.49), W2L(0.75, 0.955, -0.43),
+    W2L(0.835, 0.95, -0.385), W2L(0.855, 0.9, -0.38), W2L(0.856, 0.888, -0.38),
+  ], 0.005), M.rubber()))
+  // 壓力管（鋼管）：總泵出口 → 穿過防火牆 → 沿引擎室側往下 → 鐘形殼上方的接頭
+  const end = W2L(0.72, 0.416, -0.089)
+  g.add(mesh(tube(d, [
+    W2L(0.575, 0.785, -0.5), W2L(0.62, 0.745, -0.49), W2L(0.64, 0.65, -0.4), W2L(0.665, 0.54, -0.25), W2L(0.7, 0.45, -0.14), end,
+  ], 0.003), M.steel()))
+  g.add(mesh(cylY(d, low ? 0.008 : 0.007, 0.016), M.darkSteel(), end[0], end[1] + 0.004, end[2]))   // 鐘形殼上的接頭
+  return g
+})
 
 // ───────────────────────── 自排 ─────────────────────────
 registerProcedural('gearbox_auto_v1', (d) => {
